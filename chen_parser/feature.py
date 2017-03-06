@@ -10,7 +10,7 @@ class FeatureExtractor:
     TEMPLATE_TO_CONLLU = {'w': LEMMA, 't': UPOSTAG, 'l': DEPREL}
 
     def __init__(self, template_file_path=None):
-        self.train_data = []
+        self.list_feature_label = []
         self.template = []
         if template_file_path:
             self.template_from_file(template_file_path)
@@ -97,22 +97,26 @@ class FeatureExtractor:
         return ls_features
 
     def feature_from_file(self, file_path):
-        conllu_data = CoNLLU()
-        conllu_data.from_file(file_path)
+        conllu_data = CoNLLU(file_path)
 
         cnt_err = 0
         cnt_success = 0
         for _, sen in conllu_data.get_content().items():
             parsed_sentence = self.get_feature_from_sentence(sen)
-            if parsed_sentence:
-                self.train_data.append(parsed_sentence)
+            if parsed_sentence is not None:
+                self.list_feature_label.append(parsed_sentence)
                 cnt_success += 1
             else:
                 cnt_err += 1
 
         utils.logger.info('Parsed %d successes, %d failures' % (cnt_success, cnt_err))
 
+    def save(self, file_path):
+        with open(file_path, 'wb') as fo:
+            pickle.dump(self.list_feature_label, fo)
+
 if __name__ == '__main__':
     f_ex = FeatureExtractor(os.path.join(utils.PROJECT_PATH, 'config/chen.template'))
     f_ex.feature_from_file(os.path.join(utils.PROJECT_PATH,
                                         'data/ud-treebanks-conll2017/UD_English/en-ud-dev.conllu'))
+    f_ex.save(os.path.join(utils.PROJECT_PATH, 'models/en-ud-dev.ft'))

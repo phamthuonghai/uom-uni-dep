@@ -1,17 +1,21 @@
 import pickle
 
+from . import utils
+
 # Constants for the column indices
 COL_COUNT = 10
 ID, FORM, LEMMA, UPOSTAG, XPOSTAG, FEATS, HEAD, DEPREL, DEPS, MISC = range(COL_COUNT)
 COL_NAMES = u"ID,FORM,LEMMA,UPOSTAG,XPOSTAG,FEATS,HEAD,DEPREL,DEPS,MISC".split(u",")
 DUMMY_HEAD = [0, 'ROOT', 'root', '', '', '', -1, '', '', '']
 
+
 class CoNLLU:
     """ CoNLL-U format object """
 
-    def __init__(self):
+    def __init__(self, file_path=None):
         self._content = {}
-        self._logger = None
+        if file_path:
+            self.from_file(file_path)
 
     def from_file(self, file_path):
         """ Parse data from CoNLL-U format file """
@@ -30,7 +34,7 @@ class CoNLLU:
                     data_line = line.split('\t')
 
                     if len(data_line) != COL_COUNT:
-                        self._logger.error('Missing data: %s' % line)
+                        utils.logger.error('Missing data: %s' % line)
                         continue
 
                     # Convert ID and HEAD to number

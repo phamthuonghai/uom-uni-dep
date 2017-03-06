@@ -10,7 +10,7 @@ class Configuration:
         self.arcs = []
 
     def __repr__(self):
-        return 'S: %s --- B: %s --- A: %s' % (str(self.stack), str(self.buffer), str(self.arcs))
+        return '---\nS: %s\nB: %s\nA: %s\n---' % (str(self.stack), str(self.buffer), str(self.arcs))
 
     def op_left_arc(self, label=''):
         if len(self.stack) < 2:
@@ -55,7 +55,7 @@ class Configuration:
         return self.get_stack(1), self.get_stack(2)
 
     def is_done(self, words):
-        """ If the word in words is done with our transitions"""
+        """ If all the word in words is done with our transitions """
         for w in words:
             if w in self.stack or w in self.buffer:
                 return False
