@@ -41,10 +41,18 @@ class Configuration:
     def is_final(self):
         return len(self.buffer) <= 0 and len(self.stack) < 2
 
+    def get_stack(self, id):
+        if len(self.stack) >= id:
+            return self.stack[-id]
+        return None
+
+    def get_buffer(self, id):
+        if len(self.buffer) >= id:
+            return self.buffer[id-1]
+        return None
+
     def get_stack_tops(self):
-        if len(self.stack) < 2:
-            return -1, -1
-        return self.stack[-1], self.stack[-2]
+        return self.get_stack(1), self.get_stack(2)
 
     def is_done(self, words):
         """ If the word in words is done with our transitions"""

@@ -1,0 +1,48 @@
+s.1 w
+s.2 w
+s.3 w
+b.1 w
+b.2 w
+b.3 w
+s.1 lc.1 w
+s.1 rc.1 w
+s.1 lc.2 w
+s.1 rc.2 w
+s.2 lc.1 w
+s.2 rc.1 w
+s.2 lc.2 w
+s.2 rc.2 w
+s.1 lc.1 lc.1 w
+s.1 rc.1 rc.1 w
+s.2 lc.1 lc.1 w
+s.2 rc.1 rc.1 w
+s.1 t
+s.2 t
+s.3 t
+b.1 t
+b.2 t
+b.3 t
+s.1 lc.1 t
+s.1 rc.1 t
+s.1 lc.2 t
+s.1 rc.2 t
+s.2 lc.1 t
+s.2 rc.1 t
+s.2 lc.2 t
+s.2 rc.2 t
+s.1 lc.1 lc.1 t
+s.1 rc.1 rc.1 t
+s.2 lc.1 lc.1 t
+s.2 rc.1 rc.1 t
+s.1 lc.1 l
+s.1 rc.1 l
+s.1 lc.2 l
+s.1 rc.2 l
+s.2 lc.1 l
+s.2 rc.1 l
+s.2 lc.2 l
+s.2 rc.2 l
+s.1 lc.1 lc.1 l
+s.1 rc.1 rc.1 l
+s.2 lc.1 lc.1 l
+s.2 rc.1 rc.1 l
