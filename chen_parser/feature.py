@@ -1,13 +1,13 @@
 import os
 
 from common.conllu import *
-from chen_parser.arc_standard import Configuration
 from common import utils
+from chen_parser.arc_standard import Configuration
+from chen_parser import settings
 
 
 class FeatureExtractor:
     """ Feature Extractor """
-    TEMPLATE_TO_CONLLU = {'w': LEMMA, 't': UPOSTAG, 'l': DEPREL}
 
     def __init__(self, template_file_path=None):
         self.list_feature_label = []
@@ -19,16 +19,15 @@ class FeatureExtractor:
         try:
             with open(file_path, 'r') as f:
                 for line in f:
-                    tmp = []
                     p_line = line.strip().split()
-                    for t in p_line[:-1]:
+                    tmp = [(p_line[0],)]
+                    for t in p_line[1:]:
                         q = t.split('.')
                         q[-1] = int(q[-1])
                         tmp.append(q)
-                    tmp.append((p_line[-1],))
                     self.template.append(tmp)
         except Exception as e:
-            utils.logger.error('template_from_file', e)
+            utils.logger.error(e)
             raise e
 
     def get_child(self, sen, id, pos):
@@ -36,10 +35,11 @@ class FeatureExtractor:
         return children[pos] if 0 <= pos < len(children) else None
 
     def extract_features(self, conf, sen):
-        res_f = []
+        res_f = {k: [] for k in settings.DATA_TYPES}
         for feature in self.template:
             vl = None
-            for cmd in feature:
+            data_type = feature[0][0]
+            for cmd in feature[1:]:
                 if cmd[0] == 's':
                     vl = conf.get_stack(cmd[1])
                 elif cmd[0] == 'b':
@@ -48,14 +48,12 @@ class FeatureExtractor:
                     vl = self.get_child(sen, vl, cmd[1]-1)
                 elif cmd[0] == 'rc':
                     vl = self.get_child(sen, vl, -cmd[1])
-                elif cmd[0] in self.TEMPLATE_TO_CONLLU:
-                    res_f.append(sen[vl][self.TEMPLATE_TO_CONLLU[cmd[0]]])
-                    break
                 else:
                     utils.logger.error('Unknown command in template %s' % cmd[0])
-                if vl is None:
-                    res_f.append('')
-                    break
+            if vl is None:
+                res_f[data_type].append('')
+            else:
+                res_f[data_type].append(sen[vl][settings.TEMPLATE_TO_CONLLU[data_type]])
         return res_f
 
     def get_feature_from_sentence(self, sentence):
@@ -68,7 +66,7 @@ class FeatureExtractor:
                 cur_features = self.extract_features(cur_config, sentence)
 
                 t1, t2 = cur_config.get_stack_tops()
-                if t2 is None or t1 is None:                                                        # Stack empty
+                if t2 is None or t1 is None:                                                # Stack empty
                     cur_config.op_shift()
                     l_op = 'shift'
                 elif sentence[t2][HEAD] == sentence[t1][ID]:                                # Possible LEFT_ARC
@@ -119,4 +117,4 @@ if __name__ == '__main__':
     f_ex = FeatureExtractor(os.path.join(utils.PROJECT_PATH, 'config/chen.template'))
     f_ex.feature_from_file(os.path.join(utils.PROJECT_PATH,
                                         'data/ud-treebanks-conll2017/UD_English/en-ud-dev.conllu'))
-    f_ex.save(os.path.join(utils.PROJECT_PATH, 'models/en-ud-dev.ft'))
+    f_ex.save(os.path.join(utils.PROJECT_PATH, 'models/en-ud-dev.pkl'))
