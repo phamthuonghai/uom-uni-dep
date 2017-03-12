@@ -20,7 +20,7 @@ class FeatureExtractor:
             with open(file_path, 'r') as f:
                 for line in f:
                     p_line = line.strip().split()
-                    tmp = [(p_line[0],)]
+                    tmp = [[p_line[0], None]]
                     for t in p_line[1:]:
                         q = t.split('.')
                         q[-1] = int(q[-1])
@@ -30,8 +30,9 @@ class FeatureExtractor:
             utils.logger.error(e)
             raise e
 
-    def get_child(self, sen, id, pos):
-        children = sorted([w[ID] for w in sen if w[HEAD] == id])
+    @staticmethod
+    def get_child(sen, _id, pos):
+        children = sorted([w[ID] for w in sen if w[HEAD] == _id])
         return children[pos] if 0 <= pos < len(children) else None
 
     def extract_features(self, conf, sen):
@@ -56,7 +57,7 @@ class FeatureExtractor:
                 res_f[data_type].append(sen[vl][settings.TEMPLATE_TO_CONLLU[data_type]])
         return res_f
 
-    def get_feature_from_sentence(self, sentence):
+    def get_feature_parsed_sentence(self, sentence):
         cur_config = Configuration([w[ID] for w in sentence[1:]])
         # ls_config = [copy.deepcopy(cur_config)]
         ls_features = []
@@ -94,13 +95,14 @@ class FeatureExtractor:
         # print('\n'.join([str(cfg) for cfg in ls_features]))
         return ls_features
 
-    def feature_from_file(self, file_path):
+    def feature_from_parsed_file(self, file_path):
         conllu_data = CoNLLU(file_path)
+        self.list_feature_label = []
 
         cnt_err = 0
         cnt_success = 0
-        for _, sen in conllu_data.get_content().items():
-            parsed_sentence = self.get_feature_from_sentence(sen)
+        for _, sen in conllu_data.get_content():
+            parsed_sentence = self.get_feature_parsed_sentence(sen)
             if parsed_sentence is not None:
                 self.list_feature_label.append(parsed_sentence)
                 cnt_success += 1
@@ -115,6 +117,6 @@ class FeatureExtractor:
 
 if __name__ == '__main__':
     f_ex = FeatureExtractor(os.path.join(utils.PROJECT_PATH, 'config/chen.template'))
-    f_ex.feature_from_file(os.path.join(utils.PROJECT_PATH,
-                                        'data/ud-treebanks-conll2017/UD_English/en-ud-dev.conllu'))
+    f_ex.feature_from_parsed_file(os.path.join(utils.PROJECT_PATH,
+                                               'data/ud-treebanks-conll2017/UD_English/en-ud-dev.conllu'))
     f_ex.save(os.path.join(utils.PROJECT_PATH, 'models/en-ud-dev.pkl'))

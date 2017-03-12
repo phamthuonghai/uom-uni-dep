@@ -13,7 +13,7 @@ class CoNLLU:
     """ CoNLL-U format object """
 
     def __init__(self, file_path=None):
-        self._content = {}
+        self._content = []
         if file_path:
             self.from_file(file_path)
 
@@ -27,7 +27,7 @@ class CoNLLU:
                 line = line.strip()
 
                 if len(line) == 0:
-                    self._content[sent_id] = tmp_cont
+                    self._content.append((sent_id, tmp_cont))
                     tmp_cont = [DUMMY_HEAD]
 
                 elif line[0].isdigit():
@@ -47,6 +47,20 @@ class CoNLLU:
                     if len(data_line) == 4 and data_line[1] == 'sent_id':
                         sent_id = data_line[-1]
 
+    def remove_dep(self):
+        for _, sentence in self._content:
+            for w in sentence:
+                w[HEAD] = ''
+                w[DEPREL] = ''
+                w[DEPS] = ''
+
+    def to_file(self, file_path):
+        with open(file_path, 'w') as f:
+            for sentence in self._content:
+                for w in sentence:
+                    f.write('\t'.join([str(x) for x in w]) + '\n')
+                f.write('\n')
+
     def load(self, file_path):
         with open(file_path, 'rb') as fi:
             self._content = pickle.load(fi)
@@ -57,3 +71,6 @@ class CoNLLU:
 
     def get_content(self):
         return self._content
+
+    def set_content(self, _content):
+        self._content = _content
