@@ -6,7 +6,7 @@ from . import utils
 COL_COUNT = 10
 ID, FORM, LEMMA, UPOSTAG, XPOSTAG, FEATS, HEAD, DEPREL, DEPS, MISC = range(COL_COUNT)
 COL_NAMES = u"ID,FORM,LEMMA,UPOSTAG,XPOSTAG,FEATS,HEAD,DEPREL,DEPS,MISC".split(u",")
-DUMMY_HEAD = [0, '', '', '', '', '', -1, '', '', '']
+DUMMY_HEAD = {'0': ['0', '', '', '', '', '', -1, '', '', '']}
 
 
 class CoNLLU:
@@ -21,14 +21,15 @@ class CoNLLU:
         """ Parse data from CoNLL-U format file """
         with open(file_path, 'r') as f:
             sent_id = ''
-            tmp_cont = [DUMMY_HEAD]
+            tmp_cont = DUMMY_HEAD.copy()
 
             for line in f:
                 line = line.strip()
 
                 if len(line) == 0:
-                    self._content.append((sent_id, tmp_cont))
-                    tmp_cont = [DUMMY_HEAD]
+                    if len(tmp_cont) > 1:
+                        self._content.append((sent_id, tmp_cont))
+                        tmp_cont = DUMMY_HEAD.copy()
 
                 elif line[0].isdigit():
                     data_line = line.split('\t')
@@ -37,10 +38,7 @@ class CoNLLU:
                         utils.logger.error('Missing data: %s' % line)
                         continue
 
-                    # Convert ID and HEAD to number
-                    data_line[ID] = int(data_line[ID])
-                    data_line[HEAD] = int(data_line[HEAD])
-                    tmp_cont.append(data_line)
+                    tmp_cont[data_line[ID]] = data_line
 
                 else:
                     data_line = line.split()
@@ -49,7 +47,7 @@ class CoNLLU:
 
     def remove_dep(self):
         for _, sentence in self._content:
-            for w in sentence:
+            for __, w in sentence.items():
                 w[HEAD] = ''
                 w[DEPREL] = ''
                 w[DEPS] = ''
@@ -57,8 +55,8 @@ class CoNLLU:
     def to_file(self, file_path):
         with open(file_path, 'w') as f:
             for sentence in self._content:
-                for w in sentence:
-                    f.write('\t'.join([str(x) for x in w]) + '\n')
+                for _id in sorted(sentence.keys(), key=utils.get_id_key)[1:]:
+                    f.write('\t'.join([str(x) for x in sentence[_id]]) + '\n')
                 f.write('\n')
 
     def load(self, file_path):

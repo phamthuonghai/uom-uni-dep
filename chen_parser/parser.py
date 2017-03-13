@@ -1,5 +1,7 @@
 import os
 
+from tqdm import tqdm
+
 from common.conllu import *
 from common import utils
 from chen_parser.oracle import Oracle
@@ -16,7 +18,7 @@ class Parser:
         self.oracle.load(oracle_path_prefix)
 
     def parse_sentence(self, sentence):
-        cur_config = Configuration([w[ID] for w in sentence[1:]])
+        cur_config = Configuration(sentence.keys())
 
         while not cur_config.is_final():
             try:
@@ -41,7 +43,7 @@ class Parser:
     def parse_sentences(self, sentences):
         res = []
         cnt_err = 0
-        for _, sentence in sentences:
+        for _, sentence in tqdm(sentences):
             tmp_res = self.parse_sentence(sentence)
             if tmp_res is None:
                 cnt_err += 1

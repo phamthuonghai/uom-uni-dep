@@ -1,5 +1,7 @@
 import os
 
+from tqdm import tqdm
+
 from common.conllu import *
 from common import utils
 from chen_parser.arc_standard import Configuration
@@ -19,21 +21,22 @@ class FeatureExtractor:
         try:
             with open(file_path, 'r') as f:
                 for line in f:
-                    p_line = line.strip().split()
-                    tmp = [[p_line[0], None]]
-                    for t in p_line[1:]:
-                        q = t.split('.')
-                        q[-1] = int(q[-1])
-                        tmp.append(q)
-                    self.template.append(tmp)
+                    if len(line) > 1 and line[0] != '#':
+                        p_line = line.strip().split()
+                        tmp = [[p_line[0], None]]
+                        for t in p_line[1:]:
+                            q = t.split('.')
+                            q[-1] = int(q[-1])
+                            tmp.append(q)
+                        self.template.append(tmp)
         except Exception as e:
             utils.logger.error(e)
             raise e
 
     @staticmethod
     def get_child(sen, _id, pos):
-        children = sorted([w[ID] for w in sen if w[HEAD] == _id])
-        return children[pos] if 0 <= pos < len(children) else None
+        children = sorted([k for k, w in sen.items() if w[HEAD] == _id], key=utils.get_id_key)
+        return children[pos] if -len(children) <= pos < len(children) else None
 
     def extract_features(self, conf, sen):
         res_f = {k: [] for k in settings.DATA_TYPES}
@@ -58,7 +61,7 @@ class FeatureExtractor:
         return res_f
 
     def get_feature_parsed_sentence(self, sentence):
-        cur_config = Configuration([w[ID] for w in sentence[1:]])
+        cur_config = Configuration(sentence.keys())
         # ls_config = [copy.deepcopy(cur_config)]
         ls_features = []
 
@@ -74,7 +77,7 @@ class FeatureExtractor:
                     cur_config.op_left_arc(sentence[t2][DEPREL])
                     l_op = 'l_' + sentence[t2][DEPREL]
                 elif (sentence[t1][HEAD] == sentence[t2][ID] and                            # Possible RIGHT_ARC
-                          cur_config.is_done([w[ID] for w in sentence if w[HEAD] == t1])):  # t2 is done
+                        cur_config.is_done([k for k, w in sentence.items() if w[HEAD] == t1])):  # t2 is done
                     cur_config.op_right_arc(sentence[t1][DEPREL])
                     l_op = 'r_' + sentence[t1][DEPREL]
                 else:
@@ -85,7 +88,7 @@ class FeatureExtractor:
                 ls_features.append((cur_features, l_op))
             except Exception as e:
                 # print(cur_config)
-                # print('\n'.join([str(w) for w in sentence]))
+                # print('\n'.join([str(w) for _, w in sentence.items()]))
                 # print('\n'.join([str(cfg) for cfg in ls_config]))
                 # print(t1, t2)
                 utils.logger.debug(e)
@@ -99,9 +102,11 @@ class FeatureExtractor:
         conllu_data = CoNLLU(file_path)
         self.list_feature_label = []
 
+        utils.logger.info('Parsing sentences from %s' % file_path)
+
         cnt_err = 0
         cnt_success = 0
-        for _, sen in conllu_data.get_content():
+        for _, sen in tqdm(conllu_data.get_content()):
             parsed_sentence = self.get_feature_parsed_sentence(sen)
             if parsed_sentence is not None:
                 self.list_feature_label.append(parsed_sentence)
@@ -119,4 +124,4 @@ if __name__ == '__main__':
     f_ex = FeatureExtractor(os.path.join(utils.PROJECT_PATH, 'config/chen.template'))
     f_ex.feature_from_parsed_file(os.path.join(utils.PROJECT_PATH,
                                                'data/ud-treebanks-conll2017/UD_English/en-ud-dev.conllu'))
-    f_ex.save(os.path.join(utils.PROJECT_PATH, 'models/en-ud-dev.pkl'))
+    f_ex.save(os.path.join(utils.PROJECT_PATH, 'models/en-ud-dev-ft.pkl'))

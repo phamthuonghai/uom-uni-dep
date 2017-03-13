@@ -111,7 +111,6 @@ class Oracle:
         utils.logger.info(' - ' + path_prefix + '-model.h5')
         self.model.save(path_prefix + '-model.h5')
 
-    # @mock.patch('keras.activations.get', patch_get)
     def load(self, path_prefix):
         utils.logger.info('Loading oracle from files:')
         utils.logger.info(' - ' + path_prefix + '-dict.pkl')
@@ -123,5 +122,5 @@ class Oracle:
 
 if __name__ == '__main__':
     oracle = Oracle()
-    oracle.train_model_from_file(os.path.join(utils.PROJECT_PATH, 'models/en-ud-dev.pkl'))
+    oracle.train_model_from_file(os.path.join(utils.PROJECT_PATH, 'models/en-ud-dev-ft.pkl'))
     oracle.save(os.path.join(utils.PROJECT_PATH, 'models/en-ud-dev'))

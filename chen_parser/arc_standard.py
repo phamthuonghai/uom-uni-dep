@@ -5,7 +5,11 @@ from common import utils
 class Configuration:
 
     def __init__(self, init_buffer=None):
-        self.stack = deque([0])                 # Init with ROOT
+        self.stack = deque(['0'])                 # Init with ROOT
+        if init_buffer is not None:
+            # Remove '0' for _ROOT_ and multi-word '00-00'
+            init_buffer = sorted([_id for _id in init_buffer if _id != '0' and '-' not in _id],
+                                 key=utils.get_id_key)
         self.buffer = deque(init_buffer)
         self.arcs = []
 
@@ -41,14 +45,14 @@ class Configuration:
     def is_final(self):
         return len(self.buffer) <= 0 and len(self.stack) < 2
 
-    def get_stack(self, id):
-        if len(self.stack) >= id:
-            return self.stack[-id]
+    def get_stack(self, _id):
+        if len(self.stack) >= _id:
+            return self.stack[-_id]
         return None
 
-    def get_buffer(self, id):
-        if len(self.buffer) >= id:
-            return self.buffer[id-1]
+    def get_buffer(self, _id):
+        if len(self.buffer) >= _id:
+            return self.buffer[_id-1]
         return None
 
     def get_stack_tops(self):
