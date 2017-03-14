@@ -1,4 +1,4 @@
-import os
+import argparse
 
 from tqdm import tqdm
 
@@ -66,12 +66,18 @@ class Parser:
 
 
 if __name__ == '__main__':
-    parser = Parser(os.path.join(utils.PROJECT_PATH, 'models/en-ud-dev'),
-                    os.path.join(utils.PROJECT_PATH, 'config/chen.template'))
-    tmp = parser.parse_conllu_file(os.path.join(utils.PROJECT_PATH,
-                                                'data/ud-treebanks-conll2017/UD_English/en-ud-dev.conllu'))
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input", help="input file (conllu)")
+    parser.add_argument("model", help="output model files (path prefix)")
+    parser.add_argument("output", help="output file (conllu)")
+    parser.add_argument("-t", "--template", help="template file path",
+                        default='./config/chen.template')
+
+    args = parser.parse_args()
+
+    parser = Parser(args.model, args.template)
+    tmp = parser.parse_conllu_file(args.input)
 
     file_out = CoNLLU()
     file_out.set_content(tmp)
-    file_out.to_file(os.path.join(utils.PROJECT_PATH,
-                                  'data/ud-treebanks-conll2017/UD_English/en-ud-res.conllu'))
+    file_out.to_file(args.output)

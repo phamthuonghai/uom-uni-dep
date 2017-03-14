@@ -1,4 +1,4 @@
-import os
+import argparse
 import pickle
 from collections import Counter
 
@@ -82,7 +82,7 @@ class Oracle:
 
             main_input_layer = merge([embedding_layers[_dt] for _dt in c_stt.DATA_TYPES],
                                      mode='concat', concat_axis=1)
-            # NOTE: in Keras 2.0.0, W_regularizer -> kernel_regularizer
+            # TODO: in Keras 2.0.0, W_regularizer -> kernel_regularizer
             hidden_layer = Dense(c_stt.HIDDEN_LAYER_SIZE, activation=cubic_activation,
                                  W_regularizer=l2(c_stt.REG_PARAM))(main_input_layer)
             hd_dropout_layer = Dropout(c_stt.DROP_OUT)(hidden_layer)
@@ -131,6 +131,12 @@ class Oracle:
         self.model = load_model(path_prefix + '-model.h5', custom_objects={'cubic_activation': cubic_activation})
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input", help="input feature file (pickle)")
+    parser.add_argument("output", help="output model files (path prefix)")
+
+    args = parser.parse_args()
+
     oracle = Oracle()
-    oracle.train_model_from_file(os.path.join(utils.PROJECT_PATH, 'models/en-ud-dev-ft.pkl'))
-    oracle.save(os.path.join(utils.PROJECT_PATH, 'models/en-ud-dev'))
+    oracle.train_model_from_file(args.input)
+    oracle.save(args.output)

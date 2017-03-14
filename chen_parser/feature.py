@@ -1,4 +1,4 @@
-import os
+import argparse
 
 from tqdm import tqdm
 
@@ -121,7 +121,14 @@ class FeatureExtractor:
             pickle.dump(self.list_feature_label, fo)
 
 if __name__ == '__main__':
-    f_ex = FeatureExtractor(os.path.join(utils.PROJECT_PATH, 'config/chen.template'))
-    f_ex.feature_from_parsed_file(os.path.join(utils.PROJECT_PATH,
-                                               'data/ud-treebanks-conll2017/UD_English/en-ud-dev.conllu'))
-    f_ex.save(os.path.join(utils.PROJECT_PATH, 'models/en-ud-dev-ft.pkl'))
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input", help="input file (conllu)")
+    parser.add_argument("output", help="output feature file (pickle)")
+    parser.add_argument("-t", "--template", help="template file",
+                        default='./config/chen.template')
+
+    args = parser.parse_args()
+
+    f_ex = FeatureExtractor(args.template)
+    f_ex.feature_from_parsed_file(args.input)
+    f_ex.save(args.output)
