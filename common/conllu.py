@@ -19,7 +19,7 @@ class CoNLLU:
 
     def from_file(self, file_path):
         """ Parse data from CoNLL-U format file """
-        with open(file_path, 'r') as f:
+        with open(file_path, 'r', encoding='utf-8') as f:
             sent_id = ''
             tmp_cont = DUMMY_HEAD.copy()
 
@@ -53,7 +53,7 @@ class CoNLLU:
                 w[DEPS] = ''
 
     def to_file(self, file_path):
-        with open(file_path, 'w') as f:
+        with open(file_path, 'w', encoding='utf-8') as f:
             for sentence in self._content:
                 for _id in sorted(sentence.keys(), key=utils.get_id_key)[1:]:
                     f.write('\t'.join([str(x) for x in sentence[_id]]) + '\n')

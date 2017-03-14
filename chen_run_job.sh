@@ -15,11 +15,9 @@
 # Run job through bash shell
 #$ -S /bin/bash
 #
-# Activate virtualenv
-source ./venv/bin/activate
-
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32
+export PYTHON=$(pwd)/venv/bin/python
 
 export TRAIN_INPUT=./data/ud-treebanks-conll2017/UD_English/en-ud-train.conllu
 export FEATURE_FILE=./models/en-ud-train-ft.pkl
@@ -28,10 +26,10 @@ export PARSE_INPUT=./data/ud-treebanks-conll2017/UD_English/en-ud-dev.conllu
 export PARSE_OUTPUT=./models/en-ud-res.conllu
 
 echo "========================== FEATURES EXTRACTION =========================="
-python3 -m chen_parser.feature $TRAIN_INPUT $FEATURE_FILE
+$PYTHON -m chen_parser.feature $TRAIN_INPUT $FEATURE_FILE
 echo "============================ TRAINING ORACLE ============================"
-python3 -m chen_parser.oracle $FEATURE_FILE $MODEL_PREFIX
+$PYTHON -m chen_parser.oracle $FEATURE_FILE $MODEL_PREFIX
 echo "=========================== PARSING TEST DATA ==========================="
-python3 -m chen_parser.parser $PARSE_INPUT $MODEL_PREFIX $PARSE_OUTPUT
+$PYTHON -m chen_parser.parser $PARSE_INPUT $MODEL_PREFIX $PARSE_OUTPUT
 echo "============================ TESTING RESULTS ============================"
-python3 ./conll/evaluation_script/conll17_ud_eval.py --verbose $PARSE_INPUT $PARSE_OUTPUT
+$PYTHON ./conll/evaluation_script/conll17_ud_eval.py --verbose $PARSE_INPUT $PARSE_OUTPUT
