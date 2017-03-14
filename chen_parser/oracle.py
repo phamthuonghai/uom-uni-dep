@@ -4,9 +4,10 @@ from collections import Counter
 
 import numpy as np
 from keras.engine import Input, Model, merge
-from keras.layers import Embedding, Flatten, Dense
+from keras.layers import Embedding, Flatten, Dense, Dropout
 from keras.models import load_model
 from keras.optimizers import Adagrad
+from keras.regularizers import l2
 from keras.utils.np_utils import to_categorical
 
 from chen_parser import settings as c_stt
@@ -50,6 +51,7 @@ class Oracle:
 
                 self.encoder[_dt] = {word: i for (i, word) in enumerate(vocab)}
                 self.decoder[_dt] = {i: word for (i, word) in enumerate(vocab)}
+                # TODO: should some data types not have unknown token?
                 self.unk_id[_dt] = len(vocab)
 
             self.trn_encoder = {transition: i for (i, transition) in enumerate(sorted(transitions))}
@@ -74,24 +76,24 @@ class Oracle:
             embedding_layers = {}
             for _dt in c_stt.DATA_TYPES:
                 input_layers[_dt] = Input(shape=(len(trainset[_dt][0]),), dtype='int16')
-                embedding_layers[_dt] = Flatten()(
-                                            Embedding(input_dim=self.unk_id[_dt]+1,
-                                                      output_dim=c_stt.EMBEDDING_SIZE)(
-                                                input_layers[_dt]))
+                _embedding_layer = Embedding(input_dim=self.unk_id[_dt]+1,
+                                             output_dim=c_stt.EMBEDDING_SIZE)(input_layers[_dt])
+                embedding_layers[_dt] = Flatten()(_embedding_layer)
 
             main_input_layer = merge([embedding_layers[_dt] for _dt in c_stt.DATA_TYPES],
                                      mode='concat', concat_axis=1)
-            result_layer = Dense(len(self.trn_encoder), activation='softmax')(
-                                Dense(c_stt.HIDDEN_LAYER_SIZE, activation=cubic_activation)(
-                                    main_input_layer))
+            hidden_layer = Dense(c_stt.HIDDEN_LAYER_SIZE, activation=cubic_activation,
+                                 weight_regulariser=l2(c_stt.REG_PARAM))(main_input_layer)
+            hd_dropout_layer = Dropout(c_stt.DROP_OUT)(hidden_layer)
+            result_layer = Dense(len(self.trn_encoder), activation='softmax')(hd_dropout_layer)
 
             self.model = Model(input=[input_layers[_dt] for _dt in c_stt.DATA_TYPES], output=result_layer)
 
             utils.logger.info('Compiling model')
-            self.model.compile(optimizer=Adagrad(), loss='categorical_crossentropy')
+            self.model.compile(optimizer=Adagrad(lr=c_stt.LEARNING_RATE), loss='categorical_crossentropy')
 
             utils.logger.info('Training model')
-            self.model.fit(trainset_mat, trainset_transitions_mat,
+            self.model.fit(trainset_mat, trainset_transitions_mat, validation_split=c_stt.VALID_SET,
                            batch_size=c_stt.BATCH_SIZE, nb_epoch=c_stt.N_EPOCH)
 
     def predict(self, _feature):
@@ -100,6 +102,7 @@ class Oracle:
             tmp_ft = np.array([self.encoder[_dt].get(_tk, self.unk_id[_dt]) for _tk in _feature[_dt]], 'int16')
             fts.append(tmp_ft.reshape(1, tmp_ft.shape[0]))
 
+        # TODO: filter out impossible transitions
         return self.trn_decoder.get(np.argmax(self.model.predict(fts)), '')
 
     def save(self, path_prefix):
