@@ -15,6 +15,8 @@
 # Run job through bash shell
 #$ -S /bin/bash
 #
+# Activate virtualenv
+source ./venv/bin/activate
 
 export PYTHONPATH=$PYTHONPATH:$(pwd)
 export THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32
