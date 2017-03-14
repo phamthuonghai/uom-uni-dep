@@ -51,7 +51,7 @@ class Oracle:
 
                 self.encoder[_dt] = {word: i for (i, word) in enumerate(vocab)}
                 self.decoder[_dt] = {i: word for (i, word) in enumerate(vocab)}
-                # TODO: should some data types not have unknown token?
+                # NOTE: should some data types not have unknown token?
                 self.unk_id[_dt] = len(vocab)
 
             self.trn_encoder = {transition: i for (i, transition) in enumerate(sorted(transitions))}
@@ -82,8 +82,9 @@ class Oracle:
 
             main_input_layer = merge([embedding_layers[_dt] for _dt in c_stt.DATA_TYPES],
                                      mode='concat', concat_axis=1)
+            # NOTE: in Keras 2.0.0, W_regularizer -> kernel_regularizer
             hidden_layer = Dense(c_stt.HIDDEN_LAYER_SIZE, activation=cubic_activation,
-                                 weight_regulariser=l2(c_stt.REG_PARAM))(main_input_layer)
+                                 W_regularizer=l2(c_stt.REG_PARAM))(main_input_layer)
             hd_dropout_layer = Dropout(c_stt.DROP_OUT)(hidden_layer)
             result_layer = Dense(len(self.trn_encoder), activation='softmax')(hd_dropout_layer)
 
@@ -96,14 +97,20 @@ class Oracle:
             self.model.fit(trainset_mat, trainset_transitions_mat, validation_split=c_stt.VALID_SET,
                            batch_size=c_stt.BATCH_SIZE, nb_epoch=c_stt.N_EPOCH)
 
-    def predict(self, _feature):
+    def predict(self, _feature, _config):
         fts = []
         for _dt in c_stt.DATA_TYPES:
             tmp_ft = np.array([self.encoder[_dt].get(_tk, self.unk_id[_dt]) for _tk in _feature[_dt]], 'int16')
             fts.append(tmp_ft.reshape(1, tmp_ft.shape[0]))
 
-        # TODO: filter out impossible transitions
-        return self.trn_decoder.get(np.argmax(self.model.predict(fts)), '')
+        # filter out impossible transitions
+        pred = self.model.predict(fts)
+        if len(_config.buffer) < 1:
+            pred[0, [v for k, v in self.trn_encoder.items() if k[0] == 's']] = 0
+        if len(_config.stack) < 2:
+            pred[0, [v for k, v in self.trn_encoder.items() if k[0] in 'lr']] = 0
+
+        return self.trn_decoder.get(np.argmax(pred[0]), '')
 
     def save(self, path_prefix):
         utils.logger.info('Saving oracle to files:')

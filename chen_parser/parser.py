@@ -22,7 +22,8 @@ class Parser:
 
         while not cur_config.is_final():
             try:
-                trans = self.oracle.predict(self.feature_extractor.extract_features(cur_config, sentence))
+                trans = self.oracle.predict(self.feature_extractor.extract_features(cur_config, sentence),
+                                            cur_config)
 
                 if trans[0] == 's':     # shift
                     cur_config.op_shift()
