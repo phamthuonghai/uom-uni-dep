@@ -62,41 +62,40 @@ class FeatureExtractor:
 
     def get_feature_parsed_sentence(self, sentence):
         cur_config = Configuration(sentence.keys())
-        # ls_config = [copy.deepcopy(cur_config)]
+        signal = 1
         ls_features = []
 
         while not cur_config.is_final():
-            try:
-                cur_features = self.extract_features(cur_config, sentence)
+            cur_features = self.extract_features(cur_config, sentence)
+            dead_trans = cur_config.dead_trans()
 
-                t1, t2 = cur_config.get_stack_tops()
-                if t2 is None or t1 is None:                                                # Stack empty
-                    cur_config.op_shift()
-                    l_op = 'shift'
-                elif sentence[t2][HEAD] == sentence[t1][ID]:                                # Possible LEFT_ARC
-                    cur_config.op_left_arc(sentence[t2][DEPREL])
-                    l_op = 'l_' + sentence[t2][DEPREL]
-                elif (sentence[t1][HEAD] == sentence[t2][ID] and                            # Possible RIGHT_ARC
-                        cur_config.is_done([k for k, w in sentence.items() if w[HEAD] == t1])):  # t2 is done
-                    cur_config.op_right_arc(sentence[t1][DEPREL])
-                    l_op = 'r_' + sentence[t1][DEPREL]
-                else:
-                    cur_config.op_shift()
-                    l_op = 'shift'
-
-                # ls_config.append(copy.deepcopy(cur_config))
-                ls_features.append((cur_features, l_op))
-            except Exception as e:
+            t1, t2 = cur_config.get_stack_tops()
+            if 's' not in dead_trans and t2 is None or t1 is None:                      # Stack empty
+                cur_config.op_shift()
+                l_op = 'shift'
+            elif 'l' not in dead_trans and sentence[t2][HEAD] == sentence[t1][ID]:      # Possible LEFT_ARC
+                cur_config.op_arc('l', sentence[t2][DEPREL])
+                l_op = 'l_' + sentence[t2][DEPREL]
+            elif ('r' not in dead_trans and sentence[t1][HEAD] == sentence[t2][ID] and  # Possible RIGHT_ARC
+                    cur_config.is_done([k for k, w in sentence.items() if w[HEAD] == t1])):  # t2 is done
+                cur_config.op_arc('r', sentence[t1][DEPREL])
+                l_op = 'r_' + sentence[t1][DEPREL]
+            elif 's' not in dead_trans:
+                cur_config.op_shift()
+                l_op = 'shift'
+            else:
                 # print(cur_config)
                 # print('\n'.join([str(w) for _, w in sentence.items()]))
                 # print('\n'.join([str(cfg) for cfg in ls_config]))
                 # print(t1, t2)
-                utils.logger.debug(e)
-                return None
+                signal = -1
+                break
+
+            ls_features.append((cur_features, l_op))
 
         # print('\n'.join([str(w) for w in sentence]))
         # print('\n'.join([str(cfg) for cfg in ls_features]))
-        return ls_features
+        return signal, ls_features
 
     def feature_from_parsed_file(self, file_path):
         conllu_data = CoNLLU(file_path)
@@ -107,14 +106,14 @@ class FeatureExtractor:
         cnt_err = 0
         cnt_success = 0
         for _, sen in tqdm(conllu_data.get_content()):
-            parsed_sentence = self.get_feature_parsed_sentence(sen)
-            if parsed_sentence is not None:
-                self.list_feature_label.append(parsed_sentence)
+            tmp_sig, parsed_sentence = self.get_feature_parsed_sentence(sen)
+            if tmp_sig > 0:
                 cnt_success += 1
             else:
                 cnt_err += 1
+            self.list_feature_label.append(parsed_sentence)
 
-        utils.logger.info('Parsed %d successes, %d failures' % (cnt_success, cnt_err))
+        utils.logger.info('%d fully parsed, %d partially parsed' % (cnt_success, cnt_err))
 
     def save(self, file_path):
         with open(file_path, 'wb') as fo:

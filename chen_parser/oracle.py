@@ -103,12 +103,9 @@ class Oracle:
             tmp_ft = np.array([self.encoder[_dt].get(_tk, self.unk_id[_dt]) for _tk in _feature[_dt]], 'int16')
             fts.append(tmp_ft.reshape(1, tmp_ft.shape[0]))
 
-        # filter out impossible transitions
         pred = self.model.predict(fts)
-        if len(_config.buffer) < 1:
-            pred[0, [v for k, v in self.trn_encoder.items() if k[0] == 's']] = 0
-        if len(_config.stack) < 2:
-            pred[0, [v for k, v in self.trn_encoder.items() if k[0] in 'lr']] = 0
+        # filter out impossible transitions
+        pred[0, [v for k, v in self.trn_encoder.items() if k[0] in _config.dead_trans()]] = -1
 
         return self.trn_decoder.get(np.argmax(pred[0]), '')
 

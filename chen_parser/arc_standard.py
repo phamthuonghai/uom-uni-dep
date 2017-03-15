@@ -16,31 +16,31 @@ class Configuration:
     def __repr__(self):
         return '---\nS: %s\nB: %s\nA: %s\n---' % (str(self.stack), str(self.buffer), str(self.arcs))
 
-    def op_left_arc(self, label=''):
+    def op_arc(self, _dir, label=''):
         if len(self.stack) < 2:
-            utils.logger.error("Stack len < 2")
-            return
+            utils.logger.debug("Stack len < 2")
+            return None, None, None
 
-        head = self.stack.pop()
-        dep = self.stack.pop()
-        self.stack.append(head)                 # Do not remove head
+        if _dir == 'l':
+            head = self.stack.pop()
+            dep = self.stack.pop()
+            self.stack.append(head)                 # Do not remove head
+        elif _dir == 'r':
+            dep = self.stack.pop()
+            head = self.stack[-1]                   # Do not remove head
+        else:
+            return None, None, None
         self.arcs.append((head, dep, label))
-
-    def op_right_arc(self, label=''):
-        if len(self.stack) < 2:
-            utils.logger.error("Stack len < 2")
-            return
-
-        dep = self.stack.pop()
-        head = self.stack[-1]                   # Do not remove head
-        self.arcs.append((head, dep, label))
+        return head, dep, label
 
     def op_shift(self):
-        # if len(self.buffer) > 0:
-        #     self.stack.append(self.buffer.popleft())
-        # else:
-        #     utils.logger.error("Buffer is empty")
-        self.stack.append(self.buffer.popleft())
+        if len(self.buffer) > 0:
+            t = self.buffer.popleft()
+            self.stack.append(t)
+            return t
+        else:
+            utils.logger.debug("Buffer is empty")
+            return None
 
     def is_final(self):
         return len(self.buffer) <= 0 and len(self.stack) < 2
@@ -65,3 +65,19 @@ class Configuration:
                 return False
 
         return True
+
+    def dead_trans(self):
+        res = ''
+        lb = len(self.buffer)
+        ls = len(self.stack)
+
+        if lb < 1:      # Nothing to shift
+            res += 's'
+
+        if ls < 2:      # Nothing to pop from stack
+            res += 'lr'
+        elif ls == 2:   # Only _ROOT_ and root token left
+            res += 'l'  # No _ROOT_ <- root relation
+            if lb > 0:  # Something still needs to be processed
+                res += 'r'
+        return res

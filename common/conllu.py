@@ -45,6 +45,9 @@ class CoNLLU:
                     if len(data_line) == 4 and data_line[1] == 'sent_id':
                         sent_id = data_line[-1]
 
+        if len(tmp_cont) > 1:
+            self._content.append((sent_id, tmp_cont))
+
     def remove_dep(self):
         for _, sentence in self._content:
             for __, w in sentence.items():
