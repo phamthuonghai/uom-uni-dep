@@ -11,6 +11,7 @@
 #
 # Join stdout and stderr
 #$ -j y
+#$ -o chen.out
 #
 # Run job through bash shell
 #$ -S /bin/bash

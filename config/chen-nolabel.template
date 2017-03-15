@@ -34,15 +34,3 @@ t s.1 lc.1 lc.1
 t s.1 rc.1 rc.1
 t s.2 lc.1 lc.1
 t s.2 rc.1 rc.1
-l s.1 lc.1
-l s.1 rc.1
-l s.1 lc.2
-l s.1 rc.2
-l s.2 lc.1
-l s.2 rc.1
-l s.2 lc.2
-l s.2 rc.2
-l s.1 lc.1 lc.1
-l s.1 rc.1 rc.1
-l s.2 lc.1 lc.1
-l s.2 rc.1 rc.1
