@@ -6,7 +6,7 @@ from . import utils
 COL_COUNT = 10
 ID, FORM, LEMMA, UPOSTAG, XPOSTAG, FEATS, HEAD, DEPREL, DEPS, MISC = range(COL_COUNT)
 COL_NAMES = u"ID,FORM,LEMMA,UPOSTAG,XPOSTAG,FEATS,HEAD,DEPREL,DEPS,MISC".split(u",")
-DUMMY_HEAD = {'0': ['0', '', '', '', '', '', -1, '', '', '']}
+DUMMY_HEAD = {'0': ['0', '', '', '', '', '', '', '', '', '']}
 
 
 class CoNLLU:

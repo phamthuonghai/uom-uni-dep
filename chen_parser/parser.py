@@ -8,8 +8,6 @@ from chen_parser.oracle import Oracle
 from chen_parser.feature import FeatureExtractor
 from chen_parser.arc_standard import Configuration
 
-from chen_parser import settings as c_stt
-
 
 class Parser:
     def __init__(self, oracle_path_prefix, template_file_path):
@@ -37,9 +35,8 @@ class Parser:
                 if h is None:
                     signal = -1
                     break
-                if c_stt.UPDATE_HEAD:
-                    sentence[d][HEAD] = h
-                    sentence[d][DEPREL] = l
+                sentence[d][HEAD] = h
+                sentence[d][DEPREL] = l
             else:
                 utils.logger.warning('Unknown prediction from Oracle %s' % trans)
                 signal = -1

@@ -1,4 +1,5 @@
 import argparse
+import copy
 
 from tqdm import tqdm
 
@@ -65,8 +66,15 @@ class FeatureExtractor:
         signal = 1
         ls_features = []
 
+        # Create a copy of sentence without HEAD & DEPREL info
+        sen_new = copy.deepcopy(sentence)
+        for k, v in sen_new.items():
+            v[HEAD] = ''
+            v[DEPREL] = ''
+            v[DEPS] = ''
+
         while not cur_config.is_final():
-            cur_features = self.extract_features(cur_config, sentence)
+            cur_features = self.extract_features(cur_config, sen_new)
             dead_trans = cur_config.dead_trans()
 
             t1, t2 = cur_config.get_stack_tops()
@@ -74,11 +82,15 @@ class FeatureExtractor:
                 cur_config.op_shift()
                 l_op = 'shift'
             elif 'l' not in dead_trans and sentence[t2][HEAD] == sentence[t1][ID]:      # Possible LEFT_ARC
-                cur_config.op_arc('l', sentence[t2][DEPREL])
+                h, d, l = cur_config.op_arc('l', sentence[t2][DEPREL])
+                sen_new[d][HEAD] = h
+                sen_new[d][DEPREL] = l
                 l_op = 'l_' + sentence[t2][DEPREL]
             elif ('r' not in dead_trans and sentence[t1][HEAD] == sentence[t2][ID] and  # Possible RIGHT_ARC
                     cur_config.is_done([k for k, w in sentence.items() if w[HEAD] == t1])):  # t2 is done
-                cur_config.op_arc('r', sentence[t1][DEPREL])
+                h, d, l = cur_config.op_arc('r', sentence[t1][DEPREL])
+                sen_new[d][HEAD] = h
+                sen_new[d][DEPREL] = l
                 l_op = 'r_' + sentence[t1][DEPREL]
             elif 's' not in dead_trans:
                 cur_config.op_shift()
