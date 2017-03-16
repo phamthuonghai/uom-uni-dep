@@ -3,6 +3,7 @@ import pickle
 from collections import Counter
 
 import numpy as np
+from keras.callbacks import ModelCheckpoint, EarlyStopping
 from keras.engine import Input, Model, merge
 from keras.layers import Embedding, Flatten, Dense, Dropout
 from keras.models import load_model
@@ -19,12 +20,14 @@ def cubic_activation(x):
 
 
 class Oracle:
-    def __init__(self):
+    def __init__(self, path_prefix):
         self.encoder = {}
         self.decoder = {}
         self.trn_encoder = {}
         self.trn_decoder = {}
         self.unk_id = {}
+
+        self.path_prefix = path_prefix
 
         self.model = None
 
@@ -66,6 +69,8 @@ class Oracle:
                         trainset[_dt].append([self.encoder[_dt].get(_tk, self.unk_id[_dt]) for _tk in _tokens])
                     trainset_transitions.append(self.trn_encoder[target])
 
+            self.save_dict(self.path_prefix)
+
             trainset_mat = [np.array(trainset[k], 'int16') for k in c_stt.DATA_TYPES]
             trainset_transitions_mat = to_categorical(trainset_transitions, nb_classes=None)
             # np.zeros((len(trainset_transitions), len(self.trn_encoder)), 'bool')
@@ -94,8 +99,12 @@ class Oracle:
             self.model.compile(optimizer=Adagrad(lr=c_stt.LEARNING_RATE), loss='categorical_crossentropy')
 
             utils.logger.info('Training model')
+            callbacks = [ModelCheckpoint(self.path_prefix + '-model.h5', save_best_only=True, save_weights_only=False),
+                         EarlyStopping(min_delta=c_stt.STOP_MIN_DELTA, patience=c_stt.STOP_PATIENCE)]
             self.model.fit(trainset_mat, trainset_transitions_mat, validation_split=c_stt.VALID_SET,
-                           batch_size=c_stt.BATCH_SIZE, nb_epoch=c_stt.N_EPOCH)
+                           batch_size=c_stt.BATCH_SIZE, nb_epoch=c_stt.N_EPOCH, callbacks=callbacks)
+
+            utils.logger.info('Model saved to ' + self.path_prefix + '-model.h5')
 
     def predict(self, _feature, _config):
         fts = []
@@ -109,23 +118,23 @@ class Oracle:
 
         return self.trn_decoder.get(np.argmax(pred[0]), '')
 
-    def save(self, path_prefix):
-        utils.logger.info('Saving oracle to files:')
-        utils.logger.info(' - ' + path_prefix + '-dict.pkl')
+    def save_dict(self, path_prefix):
+        utils.logger.info('Saving dictionary to ' + path_prefix + '-dict.pkl')
         with open(path_prefix + '-dict.pkl', 'wb') as fo:
             pickle.dump((self.encoder, self.decoder, self.trn_encoder, self.trn_decoder, self.unk_id), fo)
 
-        utils.logger.info(' - ' + path_prefix + '-model.h5')
+    def save_model(self, path_prefix):
+        utils.logger.info('Saving model to ' + path_prefix + '-model.h5')
         self.model.save(path_prefix + '-model.h5')
 
-    def load(self, path_prefix):
+    def load(self):
         utils.logger.info('Loading oracle from files:')
-        utils.logger.info(' - ' + path_prefix + '-dict.pkl')
-        with open(path_prefix + '-dict.pkl', 'rb') as fi:
+        utils.logger.info(' - ' + self.path_prefix + '-dict.pkl')
+        with open(self.path_prefix + '-dict.pkl', 'rb') as fi:
             (self.encoder, self.decoder, self.trn_encoder, self.trn_decoder, self.unk_id) = pickle.load(fi)
 
-        utils.logger.info(' - ' + path_prefix + '-model.h5')
-        self.model = load_model(path_prefix + '-model.h5', custom_objects={'cubic_activation': cubic_activation})
+        utils.logger.info(' - ' + self.path_prefix + '-model.h5')
+        self.model = load_model(self.path_prefix + '-model.h5', custom_objects={'cubic_activation': cubic_activation})
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -134,6 +143,5 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    oracle = Oracle()
+    oracle = Oracle(args.output)
     oracle.train_model_from_file(args.input)
-    oracle.save(args.output)

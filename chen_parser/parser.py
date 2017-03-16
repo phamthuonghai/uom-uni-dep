@@ -14,8 +14,8 @@ class Parser:
         utils.logger.info('Initiating Chen parser')
         self.feature_extractor = FeatureExtractor(template_file_path)
         utils.logger.info('Loading Oracle from file')
-        self.oracle = Oracle()
-        self.oracle.load(oracle_path_prefix)
+        self.oracle = Oracle(oracle_path_prefix)
+        self.oracle.load()
 
     def parse_sentence(self, sentence):
         cur_config = Configuration(sentence.keys())

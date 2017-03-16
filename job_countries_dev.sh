@@ -20,7 +20,7 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)
 export THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32,lib.cnmem=0.4
 PYTHON=$(pwd)/venv/bin/python
 
-TEMPLATE_FILE=./config/chen-nolabel-nochild.template
+TEMPLATE_FILE=./config/chen.template
 
 files="./data/ud-treebanks-conll2017/*/*-ud-dev.conllu"
 regex="UD_([A-Za-z\-]+)\/([a-z_]+)-ud-dev.conllu"
@@ -34,10 +34,10 @@ do
         echo "=========================================================================="
 
         TRAIN_INPUT="./data/ud-treebanks-conll2017/UD_${BASH_REMATCH[1]}/${BASH_REMATCH[2]}-ud-train.conllu"
-        FEATURE_FILE="./models/${BASH_REMATCH[2]}-ud-train-nolabel-nochild-ft.pkl"
-        MODEL_PREFIX="./models/${BASH_REMATCH[2]}-ud-train-nolabel-nochild"
+        FEATURE_FILE="./models/${BASH_REMATCH[2]}-ud-train-ft.pkl"
+        MODEL_PREFIX="./models/${BASH_REMATCH[2]}-ud-train"
         PARSE_INPUT="./data/ud-treebanks-conll2017/UD_${BASH_REMATCH[1]}/${BASH_REMATCH[2]}-ud-dev.conllu"
-        PARSE_OUTPUT="./models/${BASH_REMATCH[2]}-ud-res-nolabel-nochild.conllu"
+        PARSE_OUTPUT="./models/${BASH_REMATCH[2]}-ud-res.conllu"
 
         echo "========================= FEATURES EXTRACTION ${BASH_REMATCH[2]} ========================="
         $PYTHON -m chen_parser.feature -t $TEMPLATE_FILE $TRAIN_INPUT $FEATURE_FILE
