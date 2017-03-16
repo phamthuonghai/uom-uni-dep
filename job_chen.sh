@@ -17,14 +17,14 @@
 #$ -S /bin/bash
 #
 export PYTHONPATH=$PYTHONPATH:$(pwd)
-export THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32
-export PYTHON=$(pwd)/venv/bin/python
+export THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32,lib.cnmem=0.4
+PYTHON=$(pwd)/venv/bin/python
 
-export TRAIN_INPUT=./data/ud-treebanks-conll2017/UD_English/en-ud-train.conllu
-export FEATURE_FILE=./models/en-ud-train-ft.pkl
-export MODEL_PREFIX=./models/en-ud-train
-export PARSE_INPUT=./data/ud-treebanks-conll2017/UD_English/en-ud-dev.conllu
-export PARSE_OUTPUT=./models/en-ud-res.conllu
+TRAIN_INPUT=./data/ud-treebanks-conll2017/UD_English/en-ud-train.conllu
+FEATURE_FILE=./models/en-ud-train-ft.pkl
+MODEL_PREFIX=./models/en-ud-train
+PARSE_INPUT=./data/ud-treebanks-conll2017/UD_English/en-ud-dev.conllu
+PARSE_OUTPUT=./models/en-ud-res.conllu
 
 echo "========================== FEATURES EXTRACTION =========================="
 $PYTHON -m chen_parser.feature $TRAIN_INPUT $FEATURE_FILE

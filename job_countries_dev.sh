@@ -17,8 +17,8 @@
 #$ -S /bin/bash
 #
 export PYTHONPATH=$PYTHONPATH:$(pwd)
-export THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32
-export PYTHON=$(pwd)/venv/bin/python
+export THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32,lib.cnmem=0.4
+PYTHON=$(pwd)/venv/bin/python
 
 TEMPLATE_FILE=./config/chen-nolabel-nochild.template
 
