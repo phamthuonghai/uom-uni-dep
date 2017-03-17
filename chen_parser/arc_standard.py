@@ -7,8 +7,8 @@ class Configuration:
     def __init__(self, init_buffer=None):
         self.stack = deque(['0'])                 # Init with ROOT
         if init_buffer is not None:
-            # Remove '0' for _ROOT_ and multi-word '00-00'
-            init_buffer = sorted([_id for _id in init_buffer if _id != '0' and '-' not in _id],
+            # Remove '0' for _ROOT_ and multi-word '00-00' and empty node '0.0'
+            init_buffer = sorted([_id for _id in init_buffer if _id != '0' and '-' not in _id and '.' not in _id],
                                  key=utils.get_id_key)
         self.buffer = deque(init_buffer)
         self.arcs = []
