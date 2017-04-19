@@ -8,7 +8,7 @@ from common.conllu import *
 from common import utils
 from chen_parser.arc_standard import Configuration
 from chen_parser import settings
-
+from pprint import pprint
 
 class FeatureExtractor:
     """ Feature Extractor """
@@ -128,15 +128,18 @@ class FeatureExtractor:
 
         utils.logger.info('%d fully parsed, %d partially parsed' % (cnt_success, cnt_err))
 
-    def save(self, file_path):
+    def save(self, file_path, pri):
         with open(file_path, 'wb') as fo:
-            pickle.dump(self.list_feature_label, fo)
+            pickle.dump((self.list_feature_label, pri), fo)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("input", nargs='?', help="input file (conllu)",
                         default=sys.stdin)
     parser.add_argument("-o", "--output", help="output feature file (pickle)")
+    parser.add_argument("-p", "--primary", 
+                        help="number of sents in primary treebank",
+                        default='-1')
     parser.add_argument("-t", "--template", help="template file",
                         default='./config/chen.template')
 
@@ -144,4 +147,4 @@ if __name__ == '__main__':
 
     f_ex = FeatureExtractor(args.template)
     f_ex.feature_from_parsed_file(args.input, isinstance(args.input, str))
-    f_ex.save(args.output)
+    f_ex.save(args.output, args.primary)

@@ -34,7 +34,7 @@ class Oracle:
     def train_model_from_file(self, file_path):
         utils.logger.info('Loading training set from file')
         with open(file_path, 'rb') as f:
-            data = pickle.load(f)
+            data, pri_sents = pickle.load(f)
 
             utils.logger.info('Retrieving dictionaries for tokens in features')
             tokens = {k: [] for k in c_stt.DATA_TYPES}
@@ -63,12 +63,19 @@ class Oracle:
             utils.logger.info('Mapping tokens to ids in dictionaries')
             trainset = {k: [] for k in c_stt.DATA_TYPES}
             trainset_transitions = list()
-            for sentence_steps in data:
+
+            # could be neater
+            for sent_no, sentence_steps in enumerate(data):
+                if sent_no == int(pri_sents):
+                    weight_array = np.full(len(trainset_transitions), 1)
                 for (features, target) in sentence_steps:
                     for _dt, _tokens in features.items():
                         trainset[_dt].append([self.encoder[_dt].get(_tk, self.unk_id[_dt]) for _tk in _tokens])
                     trainset_transitions.append(self.trn_encoder[target])
 
+            weight_array = np.append(weight_array,
+                    np.full(len(trainset_transitions) - len(weight_array),
+                        0.8))
             self.save_dict(self.path_prefix)
 
             trainset_mat = [np.array(trainset[k], 'int16') for k in c_stt.DATA_TYPES]
@@ -99,9 +106,11 @@ class Oracle:
             self.model.compile(optimizer=Adagrad(lr=c_stt.LEARNING_RATE), loss='categorical_crossentropy')
 
             utils.logger.info('Training model')
+            
             callbacks = [ModelCheckpoint(self.path_prefix + '-model.h5', save_best_only=True, save_weights_only=False),
                          EarlyStopping(min_delta=c_stt.STOP_MIN_DELTA, patience=c_stt.STOP_PATIENCE)]
-            self.model.fit(trainset_mat, trainset_transitions_mat, validation_split=c_stt.VALID_SET,
+            self.model.fit(trainset_mat, trainset_transitions_mat,
+                    sample_weight=weight_array, validation_split=c_stt.VALID_SET,
                            batch_size=c_stt.BATCH_SIZE, nb_epoch=c_stt.N_EPOCH, callbacks=callbacks)
 
             utils.logger.info('Model saved to ' + self.path_prefix + '-model.h5')
