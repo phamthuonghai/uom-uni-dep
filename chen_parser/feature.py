@@ -137,11 +137,11 @@ if __name__ == '__main__':
     parser.add_argument("input", nargs='?', help="input file (conllu)",
                         default=sys.stdin)
     parser.add_argument("-o", "--output", help="output feature file (pickle)")
+    parser.add_argument("-t", "--template", help="template file",
+                        default='./config/chen.template')
     parser.add_argument("-p", "--primary", 
                         help="number of sents in primary treebank",
                         default='-1')
-    parser.add_argument("-t", "--template", help="template file",
-                        default='./config/chen.template')
 
     args = parser.parse_args()
 
