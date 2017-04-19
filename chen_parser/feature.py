@@ -1,5 +1,6 @@
 import argparse
 import copy
+import sys
 
 from tqdm import tqdm
 
@@ -109,8 +110,8 @@ class FeatureExtractor:
         # print('\n'.join([str(cfg) for cfg in ls_features]))
         return signal, ls_features
 
-    def feature_from_parsed_file(self, file_path):
-        conllu_data = CoNLLU(file_path)
+    def feature_from_parsed_file(self, file_path, is_path=True):
+        conllu_data = CoNLLU(file_path, is_path)
         self.list_feature_label = []
 
         utils.logger.info('Parsing sentences from %s' % file_path)
@@ -133,13 +134,14 @@ class FeatureExtractor:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("input", help="input file (conllu)")
-    parser.add_argument("output", help="output feature file (pickle)")
+    parser.add_argument("input", nargs='?', help="input file (conllu)",
+                        default=sys.stdin)
+    parser.add_argument("-o", "--output", help="output feature file (pickle)")
     parser.add_argument("-t", "--template", help="template file",
                         default='./config/chen.template')
 
     args = parser.parse_args()
 
     f_ex = FeatureExtractor(args.template)
-    f_ex.feature_from_parsed_file(args.input)
+    f_ex.feature_from_parsed_file(args.input, isinstance(args.input, str))
     f_ex.save(args.output)

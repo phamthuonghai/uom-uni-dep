@@ -12,39 +12,53 @@ DUMMY_HEAD = {'0': ['0', '', '', '', '', '', '', '', '', '']}
 class CoNLLU:
     """ CoNLL-U format object """
 
-    def __init__(self, file_path=None):
+    def __init__(self, file_path=None, is_path=True):
         self._content = []
         if file_path:
-            self.from_file(file_path)
+            if is_path:
+                self.from_file(file_path)
+            else:
+                self.from_text(file_path)
+
+    def read_block(self, obj):
+        sent_id = ''
+        tmp_cont = DUMMY_HEAD.copy()
+
+        for line in obj:
+            line = line.strip()
+
+            if len(line) == 0:
+                if len(tmp_cont) > 1:
+                    self._content.append((sent_id, tmp_cont))
+                    tmp_cont = DUMMY_HEAD.copy()
+
+            elif line[0].isdigit():
+                data_line = line.split('\t')
+
+                if len(data_line) != COL_COUNT:
+                    utils.logger.error('Missing data: %s' % line)
+                    continue
+
+                tmp_cont[data_line[ID]] = data_line
+
+            else:
+                data_line = line.split()
+                if len(data_line) == 4 and data_line[1] == 'sent_id':
+                    sent_id = data_line[-1]
+
+        return tmp_cont
+
+    def from_text(self, file_path):
+        tmp_cont = self.read_block(file_path)
+
+        if len(tmp_cont) > 1:
+            self._content.append((sent_id, tmp_cont))
 
     def from_file(self, file_path):
         """ Parse data from CoNLL-U format file """
         with open(file_path, 'r', encoding='utf-8') as f:
-            sent_id = ''
-            tmp_cont = DUMMY_HEAD.copy()
-
-            for line in f:
-                line = line.strip()
-
-                if len(line) == 0:
-                    if len(tmp_cont) > 1:
-                        self._content.append((sent_id, tmp_cont))
-                        tmp_cont = DUMMY_HEAD.copy()
-
-                elif line[0].isdigit():
-                    data_line = line.split('\t')
-
-                    if len(data_line) != COL_COUNT:
-                        utils.logger.error('Missing data: %s' % line)
-                        continue
-
-                    tmp_cont[data_line[ID]] = data_line
-
-                else:
-                    data_line = line.split()
-                    if len(data_line) == 4 and data_line[1] == 'sent_id':
-                        sent_id = data_line[-1]
-
+            tmp_cont = self.read_block(f)
+        
         if len(tmp_cont) > 1:
             self._content.append((sent_id, tmp_cont))
 
