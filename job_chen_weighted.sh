@@ -27,7 +27,7 @@ PARSE_INPUT=./data/ud-treebanks-conll2017/UD_Spanish/es-ud-dev.conllu
 PARSE_OUTPUT=./models/es-ud-res.conllu
 
 echo "========================== FEATURES EXTRACTION =========================="
-$PYTHON -m chen_parser.feature $TRAIN_INPUT $FEATURE_FILE 14187
+cat $TRAIN_INPUT | $PYTHON -m chen_parser.feature -o $FEATURE_FILE -p 14187
 echo "============================ TRAINING ORACLE ============================"
 $PYTHON -m chen_parser.oracle $FEATURE_FILE $MODEL_PREFIX
 echo "=========================== PARSING TEST DATA ==========================="

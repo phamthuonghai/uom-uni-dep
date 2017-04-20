@@ -134,7 +134,7 @@ class FeatureExtractor:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("input", nargs='?', help="input file (conllu)",
+    parser.add_argument("-i", "--input", nargs='?', help="input file (conllu)",
                         default=sys.stdin)
     parser.add_argument("-o", "--output", help="output feature file (pickle)")
     parser.add_argument("-t", "--template", help="template file",
