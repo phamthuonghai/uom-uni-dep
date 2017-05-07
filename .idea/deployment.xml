@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="PublishConfigData" serverName="ud2017.uom">
+    <serverData>
+      <paths name="ud2017.uom">
+        <serverdata>
+          <mappings>
+            <mapping deploy="/uom-uni-dep" local="$PROJECT_DIR$" web="/" />
+          </mappings>
+          <excludedPaths>
+            <excludedPath local="true" path="$PROJECT_DIR$/data/" />
+            <excludedPath local="true" path="$PROJECT_DIR$/venv/" />
+            <excludedPath local="true" path="$PROJECT_DIR$/models/" />
+            <excludedPath local="true" path="$PROJECT_DIR$/udpipe/" />
+            <excludedPath local="true" path="$PROJECT_DIR$/tdozat/saves/" />
+          </excludedPaths>
+        </serverdata>
+      </paths>
+    </serverData>
+  </component>
+</project>

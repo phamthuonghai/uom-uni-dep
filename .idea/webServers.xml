@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="5c702ff3-9ad0-4961-9d39-fac08e090925" name="ud2017.uom" url="http://ud2017.uom">
+        <fileTransfer host="ud2017.uom" port="22" privateKey="$USER_HOME$/.ssh/id_rsa" rootFolder="/storage/users/ud2017" accessType="SFTP" keyPair="true">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" />
+          </advancedOptions>
+          <option name="port" value="22" />
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
