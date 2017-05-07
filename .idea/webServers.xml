@@ -10,6 +10,14 @@
           <option name="port" value="22" />
         </fileTransfer>
       </webServer>
+      <webServer id="cd308bfb-487d-41fe-8446-2ae1678afa93" name="conllu" url="http://webis17.medien.uni-weimar.de">
+        <fileTransfer host="webis17.medien.uni-weimar.de" port="44422" rootFolder="/home/LCTMT" accessType="SFTP">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" />
+          </advancedOptions>
+          <option name="port" value="44422" />
+        </fileTransfer>
+      </webServer>
     </option>
   </component>
 </project>
