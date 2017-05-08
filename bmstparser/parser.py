@@ -1,6 +1,9 @@
+import utils
+import mstlstm
+import os.path
+import pickle
+import time
 from optparse import OptionParser
-import pickle, utils, mstlstm, os, os.path, time
-
 
 if __name__ == '__main__':
     parser = OptionParser()
@@ -53,9 +56,9 @@ if __name__ == '__main__':
         utils.write_conll(tespath, test_res)
 
         if not conllu:
-            os.system('perl src/utils/eval.pl -g ' + options.conll_test + ' -s ' + tespath  + ' > ' + tespath + '.txt')
+            os.system('perl conll/eval.pl -g ' + options.conll_test + ' -s ' + tespath + ' > ' + tespath + '.txt')
         else:
-            os.system('python src/utils/evaluation_script/conll17_ud_eval.py -v -w src/utils/evaluation_script/weights.clas ' + options.conll_test + ' ' + tespath + ' > ' + testpath + '.txt')
+            os.system('python conll/evaluation_script/conll17_ud_eval.py -v -w conll/evaluation_script/weights.clas ' + options.conll_test + ' ' + tespath + ' > ' + tespath + '.txt')
     else:
         print 'Preparing vocab'
         words, w2i, pos, rels = utils.vocab(options.conll_train)
@@ -76,7 +79,7 @@ if __name__ == '__main__':
             parser.Save(os.path.join(options.output, os.path.basename(options.model) + str(epoch+1)))
 
             if not conllu:
-                os.system('perl src/utils/eval.pl -g ' + options.conll_dev  + ' -s ' + devpath  + ' > ' + devpath + '.txt')
+                os.system('perl conll/eval.pl -g ' + options.conll_dev  + ' -s ' + devpath  + ' > ' + devpath + '.txt')
             else:
-                os.system('python src/utils/evaluation_script/conll17_ud_eval.py -v -w src/utils/evaluation_script/weights.clas ' + options.conll_dev + ' ' + devpath + ' > ' + devpath + '.txt')
+                os.system('python conll/evaluation_script/conll17_ud_eval.py -v -w conll/evaluation_script/weights.clas ' + options.conll_dev + ' ' + devpath + ' > ' + devpath + '.txt')
 

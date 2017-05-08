@@ -1,8 +1,12 @@
-from dynet import *
-from utils import read_conll, write_conll
 from operator import itemgetter
-import utils, time, random, decoder
+
+import utils
+import decoder
 import numpy as np
+import random
+import time
+from utils import read_conll
+from dynet import *
 
 
 class MSTParserLSTM:
