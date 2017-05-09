@@ -1,4 +1,5 @@
 import pickle
+import io
 
 from . import utils
 
@@ -19,7 +20,7 @@ class CoNLLU:
 
     def from_file(self, file_path):
         """ Parse data from CoNLL-U format file """
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with io.open(file_path, 'r', encoding='utf-8') as f:
             sent_id = ''
             tmp_cont = DUMMY_HEAD.copy()
 
@@ -56,11 +57,12 @@ class CoNLLU:
                 w[DEPS] = ''
 
     def to_file(self, file_path):
-        with open(file_path, 'w', encoding='utf-8') as f:
-            for sentence in self._content:
+        with io.open(file_path, 'w', encoding='utf-8') as f:
+            for _, sentence in self._content:
                 for _id in sorted(sentence.keys(), key=utils.get_id_key)[1:]:
-                    f.write('\t'.join([str(x) for x in sentence[_id]]) + '\n')
-                f.write('\n')
+                    f.write(u'\t'.join([str(x).encode('utf-8') if isinstance(x, float) else x
+                                        for x in sentence[_id]]) + u'\n')
+                f.write(u'\n')
 
     def load(self, file_path):
         with open(file_path, 'rb') as fi:
