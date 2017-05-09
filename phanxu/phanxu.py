@@ -31,17 +31,16 @@ class PhanXu:
             self.read_files(train_files, gold_file_path)
 
     def get_vocabs(self, data):
-        for _, sentence in data.get_content():
+        freqs = Counter([word[conllu.FORM]
+                         for _, sentence in data.get_content() for _, word in sentence.iteritems()])
+        vocab = sorted(freqs.keys(), key=freqs.get, reverse=True)[:MAX_VOCAB_SIZE]
 
-            freqs = Counter([word[conllu.FORM] for _, word in sentence.iteritems()])
-            vocab = sorted(freqs.keys(), key=freqs.get, reverse=True)[:MAX_VOCAB_SIZE]
-
-            self.word_index = {word: i for (i, word) in enumerate(vocab)}
+        self.word_index = {word: i for (i, word) in enumerate(vocab)}
 
     def parse_data(self, data):
         res_1 = []
         res_2 = []
-        for _, sentence in data.get_content():
+        for _, sentence in data:
             ids_1 = sorted([_id for _id in sentence if _id != '0' and '-' not in _id and '.' not in _id],
                            key=utils.get_id_key)
             ids_2 = [sentence[_id][conllu.HEAD] for _id in ids_1]
@@ -53,7 +52,7 @@ class PhanXu:
     @staticmethod
     def score(data, gold):
         res = []
-        for (sen_data, sen_gold) in zip(data.get_content(), gold.get_content()):
+        for (sen_data, sen_gold) in zip(data, gold):
             sen_data = sen_data[1]
             sen_gold = sen_gold[1]
             val_ids = [_id for _id in sen_gold if _id != '0' and '-' not in _id and '.' not in _id]
@@ -76,13 +75,13 @@ class PhanXu:
             self.train_labels = []
             for train_file in train_files:
                 train_raw = conllu.CoNLLU(train_file)
-                parsed_tmp = self.parse_data(train_raw)
+                parsed_tmp = self.parse_data(train_raw.get_content())
                 if len(self.train_data) > 0:
                     self.train_data[0] = np.concatenate((self.train_data[0], parsed_tmp[0]))
                     self.train_data[1] = np.concatenate((self.train_data[1], parsed_tmp[1]))
                 else:
                     self.train_data = parsed_tmp
-                self.train_labels += self.score(train_raw, gold_raw)
+                self.train_labels += self.score(train_raw.get_content(), gold_raw.get_content())
 
             print('Parsed %d in file, %d samples, %d labels' % (len(gold_raw.get_content()),
                                                                 len(self.train_data[0]), len(self.train_labels)))
@@ -165,12 +164,13 @@ class PhanXu:
         datas = []
         preds = []
         for input_file in input_files:
-            datas.append(conllu.CoNLLU(input_file))
-            preds.append(self.model.predict(self.parse_data(datas[-1])))
+            datas.append(conllu.CoNLLU(input_file).get_content())
+            preds.append(self.model.predict(self.parse_data(datas[-1])).flatten())
 
         preds = np.array(preds).transpose()
         res = conllu.CoNLLU()
         for _id, row in enumerate(preds):
+            print(row)
             pred_max = np.argmax(row)
             res._content.append(datas[pred_max][_id])
 
