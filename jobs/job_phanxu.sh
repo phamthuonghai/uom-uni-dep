@@ -21,6 +21,8 @@ export THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32,lib.cnmem=0.4,dnn.en
 
 PYTHON=$(pwd)/venv/bin/python
 source $(pwd)/venv/bin/activate
+LANG=en-ud
 
-${PYTHON} -u ./phanxu/phanxu.py train -i ./saves/udpipe/grc-ud-train.conllu -i ./saves/grc-ud/train.conllu -g ./data/treebanks/grc-ud-train.conllu
+mkdir ./saves/phanxu/${LANG}
+${PYTHON} -u ./phanxu/phanxu.py all -m ./saves/phanxu/${LANG}/ -i ./saves/udpipe/${LANG}-train.conllu -i ./saves/bmst/${LANG}/train.conllu -g ./data/treebanks/${LANG}-train.conllu -t ./saves/udpipe/${LANG}-dev.conllu -t ./saves/bmst/${LANG}/dev.conllu -o ./saves/phanxu/${LANG}/dev.conllu -e ./data/fasttext/wiki.en.vec
 date

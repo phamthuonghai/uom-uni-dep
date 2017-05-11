@@ -40,7 +40,7 @@ def vocab(conll_path):
 
 
 def read_conll(fh):
-    root = ConllEntry(0, '*root*', '*root*', 'ROOT-POS', 'ROOT-CPOS', '_', -1, 'rroot', '_', '_')
+    root = ConllEntry(0, '*root*', '*root*', 'ROOT-CPOS', 'ROOT-POS', '_', -1, 'rroot', '_', '_')
     tokens = [root]
     for line in fh:
         tok = line.strip().split('\t')

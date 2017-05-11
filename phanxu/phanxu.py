@@ -1,4 +1,5 @@
 import argparse
+import io
 from collections import Counter
 from os.path import exists
 import pickle
@@ -19,7 +20,7 @@ from common import utils
 
 class PhanXu:
 
-    def __init__(self, model_prefix, train_files=None, gold_file_path=None):
+    def __init__(self, model_prefix, train_files=None, gold_file_path=None, embedding_file_path=None):
         self.train_data = None
         self.train_labels = None
         self.VOCAB_SIZE = 0
@@ -28,7 +29,7 @@ class PhanXu:
         self.word_index = None
         self.model_prefix = model_prefix
         if train_files is not None and gold_file_path is not None:
-            self.read_files(train_files, gold_file_path)
+            self.read_files(train_files, gold_file_path, embedding_file_path)
 
     def get_vocabs(self, data):
         freqs = Counter([word[conllu.FORM]
@@ -59,6 +60,21 @@ class PhanXu:
             res.append(sum([sen_data[_id][conllu.HEAD] == sen_gold[_id][conllu.HEAD] for _id in val_ids])*1.0/len(val_ids))
         return res
 
+    def parse_data_2(self, train_raws):
+        res_1 = []
+        res_2 = []
+        for (_, sen1), (_, sen2) in zip(train_raws[0], train_raws[1]):
+            ids_1 = sorted([_id for _id in sen1 if _id != '0' and '-' not in _id and '.' not in _id],
+                           key=utils.get_id_key)
+            ids_2 = sorted([_id for _id in sen2 if _id != '0' and '-' not in _id and '.' not in _id],
+                           key=utils.get_id_key)
+            res_1.append([self.word_index.get(sen1[_id][conllu.FORM], len(self.word_index)) for _id in ids_1]
+                         + [self.word_index.get(sen1[sen1[_id][conllu.HEAD]][conllu.FORM], len(self.word_index)) for _id in ids_1])
+            res_2.append([self.word_index.get(sen2[_id][conllu.FORM], len(self.word_index)) for _id in ids_2]
+                         + [self.word_index.get(sen2[sen2[_id][conllu.HEAD]][conllu.FORM], len(self.word_index)) for _id in ids_2])
+
+        return [pad_sequences(res_1, maxlen=MAX_LEN), pad_sequences(res_2, maxlen=MAX_LEN)]
+
     def read_files(self, train_files, gold_file_path, embedding_file_path=None):
         if (exists(self.model_prefix + '_train_data.npy') and exists(self.model_prefix + '_word_index.pkl') and
                 exists(self.model_prefix + '_train_labels.npy')):
@@ -73,15 +89,20 @@ class PhanXu:
 
             self.train_data = []
             self.train_labels = []
-            for train_file in train_files:
-                train_raw = conllu.CoNLLU(train_file)
-                parsed_tmp = self.parse_data(train_raw.get_content())
-                if len(self.train_data) > 0:
-                    self.train_data[0] = np.concatenate((self.train_data[0], parsed_tmp[0]))
-                    self.train_data[1] = np.concatenate((self.train_data[1], parsed_tmp[1]))
-                else:
-                    self.train_data = parsed_tmp
-                self.train_labels += self.score(train_raw.get_content(), gold_raw.get_content())
+            # for train_file in train_files:
+            #     train_raw = conllu.CoNLLU(train_file)
+            #     parsed_tmp = self.parse_data(train_raw.get_content())
+            #     if len(self.train_data) > 0:
+            #         self.train_data[0] = np.concatenate((self.train_data[0], parsed_tmp[0]))
+            #         self.train_data[1] = np.concatenate((self.train_data[1], parsed_tmp[1]))
+            #     else:
+            #         self.train_data = parsed_tmp
+            #     self.train_labels += self.score(train_raw.get_content(), gold_raw.get_content())
+
+            train_raws = [conllu.CoNLLU(train_file).get_content() for train_file in train_files]
+            self.train_data = self.parse_data_2(train_raws)
+            self.train_labels = (np.array(self.score(train_raws[0], gold_raw.get_content()))
+                                 >= np.array(self.score(train_raws[1], gold_raw.get_content()))).astype(float)
 
             print('Parsed %d in file, %d samples, %d labels' % (len(gold_raw.get_content()),
                                                                 len(self.train_data[0]), len(self.train_labels)))
@@ -97,15 +118,18 @@ class PhanXu:
             print('Load word embedding matrix from file')
             self.word_embedding_matrix = np.load(self.model_prefix + '_word_embedding.npy')
         elif embedding_file_path is not None:
-            print('Init word embedding matrix with pre-trained GloVe')
+            print('Init word embedding matrix with pre-trained')
             self.word_embedding_matrix = np.zeros((self.VOCAB_SIZE + 1, EMBEDDING_SIZE))
 
-            with open(embedding_file_path, encoding='utf-8') as f:
-                for line in f:
-                    values = line.split(' ')
+            with io.open(embedding_file_path, 'r', encoding='utf-8') as f:
+                for line_no, line in enumerate(f):
+                    values = line.strip().split(' ')
                     word = values[0]
                     if word in self.word_index:
-                        self.word_embedding_matrix[self.word_index[word]] = np.asarray(values[1:], dtype='float32')
+                        try:
+                            self.word_embedding_matrix[self.word_index[word]] = np.asarray(values[1:], dtype='float32')
+                        except Exception as e:
+                            print('Embedding error on line %d' % line_no)
 
             np.save(self.model_prefix + '_word_embedding.npy', self.word_embedding_matrix)
 
@@ -143,7 +167,8 @@ class PhanXu:
         pred = Dense(1, activation='sigmoid')(joint)
 
         model = Model(inputs=[q1, q2], outputs=pred)
-        model.compile(optimizer=OPTIMIZER, loss='mean_squared_error', metrics=['accuracy'])
+        # model.compile(optimizer=OPTIMIZER, loss='mean_squared_error', metrics=['accuracy'])
+        model.compile(optimizer=OPTIMIZER, loss='binary_crossentropy', metrics=['accuracy'])
 
         return model
 
@@ -160,7 +185,7 @@ class PhanXu:
 
         self.model.load_weights(self.model_prefix + '.h5')
 
-    def test(self, input_files, output_file):
+    def test1(self, input_files, output_file):
         datas = []
         preds = []
         for input_file in input_files:
@@ -176,14 +201,31 @@ class PhanXu:
 
         res.to_file(output_file)
 
+    def test2(self, input_files, output_file):
+        datas = [conllu.CoNLLU(input_file).get_content() for input_file in input_files]
+        preds = self.model.predict(self.parse_data_2(datas)).flatten()
+
+        res = conllu.CoNLLU()
+        for _id, row in enumerate(preds):
+            pred_max = 0 if row > 0.5 else 1
+            res._content.append(datas[pred_max][_id])
+
+        res.to_file(output_file)
+
+    def test(self, input_files, output_file):
+        self.test2(input_files, output_file)
+
     def load_model(self):
         self.model = self.get_model()
         print('Load weights from file')
         self.model.load_weights(self.model_prefix + '.h5')
 
-        if self.word_index is None:
-            print('Load word_index from file')
-            self.word_index = pickle.load(open(self.model_prefix + '_word_index.pkl', 'rb'))
+        print('Load word_index from file')
+        self.word_index = pickle.load(open(self.model_prefix + '_word_index.pkl', 'rb'))
+
+        if exists(self.model_prefix + '_word_embedding.npy'):
+            print('Load word embedding matrix from file')
+            self.word_embedding_matrix = np.load(self.model_prefix + '_word_embedding.npy')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -193,17 +235,18 @@ if __name__ == '__main__':
     parser.add_argument("-g", "--gold-data", default='./data/treebanks/grc-ud-train.conllu')
     parser.add_argument("-t", "--test-data", action='append')
     parser.add_argument("-o", "--output", default='./saves/phanxu/grc-ud-test.conllu')
+    parser.add_argument("-e", "--embedding")
     args = parser.parse_args()
 
     if args.task == 'all':
-        phanxu = PhanXu(model_prefix=args.model_prefix, train_files=args.train_data, gold_file_path=args.gold_data)
+        phanxu = PhanXu(args.model_prefix, args.train_data, args.gold_data, args.embedding)
         phanxu.train()
         phanxu.test(args.test_data, args.output)
     elif args.task == 'train':
-        phanxu = PhanXu(model_prefix=args.model_prefix, train_files=args.train_data, gold_file_path=args.gold_data)
+        phanxu = PhanXu(args.model_prefix, args.train_data, args.gold_data, args.embedding)
         phanxu.train()
     elif args.task == 'test':
-        phanxu = PhanXu(model_prefix=args.model_prefix)
+        phanxu = PhanXu(args.model_prefix)
         phanxu.load_model()
         phanxu.test(args.test_data, args.output)
     else:
