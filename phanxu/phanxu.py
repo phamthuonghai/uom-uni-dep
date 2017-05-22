@@ -9,7 +9,8 @@ import keras
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from keras.engine import Input
 from keras.engine import Model
-from keras.layers import Embedding, TimeDistributed, Dense, Lambda, Dropout, BatchNormalization, concatenate
+from keras.layers import Embedding, TimeDistributed, Dense, Lambda, Dropout, BatchNormalization, concatenate, \
+    Bidirectional, recurrent
 from keras.preprocessing.sequence import pad_sequences
 from keras.regularizers import l2
 
@@ -20,7 +21,8 @@ from common import utils
 
 class PhanXu:
 
-    def __init__(self, model_prefix, train_files=None, gold_file_path=None, embedding_file_path=None):
+    def __init__(self, model_prefix, model_type, sen_type,
+                 train_files=None, gold_file_path=None, embedding_file_path=None):
         self.train_data = None
         self.train_labels = None
         self.VOCAB_SIZE = 0
@@ -28,6 +30,8 @@ class PhanXu:
         self.model = None
         self.word_index = None
         self.model_prefix = model_prefix
+        self.model_type = model_type
+        self.sen_type = sen_type
         if train_files is not None and gold_file_path is not None:
             self.read_files(train_files, gold_file_path, embedding_file_path)
 
@@ -89,20 +93,22 @@ class PhanXu:
 
             self.train_data = []
             self.train_labels = []
-            # for train_file in train_files:
-            #     train_raw = conllu.CoNLLU(train_file)
-            #     parsed_tmp = self.parse_data(train_raw.get_content())
-            #     if len(self.train_data) > 0:
-            #         self.train_data[0] = np.concatenate((self.train_data[0], parsed_tmp[0]))
-            #         self.train_data[1] = np.concatenate((self.train_data[1], parsed_tmp[1]))
-            #     else:
-            #         self.train_data = parsed_tmp
-            #     self.train_labels += self.score(train_raw.get_content(), gold_raw.get_content())
 
-            train_raws = [conllu.CoNLLU(train_file).get_content() for train_file in train_files]
-            self.train_data = self.parse_data_2(train_raws)
-            self.train_labels = (np.array(self.score(train_raws[0], gold_raw.get_content()))
-                                 >= np.array(self.score(train_raws[1], gold_raw.get_content()))).astype(float)
+            if self.model_type == 'compare':
+                train_raws = [conllu.CoNLLU(train_file).get_content() for train_file in train_files]
+                self.train_data = self.parse_data_2(train_raws)
+                self.train_labels = (np.array(self.score(train_raws[0], gold_raw.get_content()))
+                                     >= np.array(self.score(train_raws[1], gold_raw.get_content()))).astype(float)
+            else:
+                for train_file in train_files:
+                    train_raw = conllu.CoNLLU(train_file)
+                    parsed_tmp = self.parse_data(train_raw.get_content())
+                    if len(self.train_data) > 0:
+                        self.train_data[0] = np.concatenate((self.train_data[0], parsed_tmp[0]))
+                        self.train_data[1] = np.concatenate((self.train_data[1], parsed_tmp[1]))
+                    else:
+                        self.train_data = parsed_tmp
+                    self.train_labels += self.score(train_raw.get_content(), gold_raw.get_content())
 
             print('Parsed %d in file, %d samples, %d labels' % (len(gold_raw.get_content()),
                                                                 len(self.train_data[0]), len(self.train_labels)))
@@ -133,26 +139,39 @@ class PhanXu:
 
             np.save(self.model_prefix + '_word_embedding.npy', self.word_embedding_matrix)
 
-    def get_model(self):
+    def get_model(self, max_size=EMBEDDING_SIZE):
         # Defining model
         print('Define model')
         q1 = Input(shape=(MAX_LEN,), dtype='int32')
         q2 = Input(shape=(MAX_LEN,), dtype='int32')
 
+        if max_size < EMBEDDING_SIZE:
+            print('Reduce EMBEDDING_SIZE to %d due to pretrained embedding' % max_size)
+
+        if max_size < SENT_HIDDEN_SIZE:
+            print('Reduce SENT_HIDDEN_SIZE to %d due to pretrained embedding' % max_size)
+
         if self.word_embedding_matrix is None:
-            embed = Embedding(self.VOCAB_SIZE + 1, EMBEDDING_SIZE, input_length=MAX_LEN, trainable=TRAIN_EMBED)
+            embed = Embedding(self.VOCAB_SIZE + 1, min(max_size, EMBEDDING_SIZE),
+                              input_length=MAX_LEN, trainable=TRAIN_EMBED)
         else:
-            embed = Embedding(self.VOCAB_SIZE + 1, EMBEDDING_SIZE, weights=[self.word_embedding_matrix],
+            embed = Embedding(self.VOCAB_SIZE + 1, min(max_size, EMBEDDING_SIZE), weights=[self.word_embedding_matrix],
                               input_length=MAX_LEN, trainable=TRAIN_EMBED)
         embed_q1 = embed(q1)
         embed_q2 = embed(q2)
 
-        translate = TimeDistributed(Dense(SENT_HIDDEN_SIZE, activation=ACTIVATION))
+        translate = TimeDistributed(Dense(min(max_size, SENT_HIDDEN_SIZE), activation=ACTIVATION))
 
         sent_q1 = translate(embed_q1)
         sent_q2 = translate(embed_q2)
 
-        sent_embed = Lambda(lambda x: keras.backend.sum(x, axis=1), output_shape=(SENT_HIDDEN_SIZE, ))
+        if self.sen_type == 'lstm':
+            sent_embed = Bidirectional(recurrent.LSTM(units=min(max_size, SENT_HIDDEN_SIZE),
+                                                      recurrent_dropout=DROPOUT_RATE, dropout=DROPOUT_RATE,
+                                                      return_sequences=False))
+        else:
+            sent_embed = Lambda(lambda x: keras.backend.sum(x, axis=1), output_shape=(min(max_size, SENT_HIDDEN_SIZE),))
+
         sent_q1 = BatchNormalization()(sent_embed(sent_q1))
         sent_q2 = BatchNormalization()(sent_embed(sent_q2))
 
@@ -167,8 +186,10 @@ class PhanXu:
         pred = Dense(1, activation='sigmoid')(joint)
 
         model = Model(inputs=[q1, q2], outputs=pred)
-        # model.compile(optimizer=OPTIMIZER, loss='mean_squared_error', metrics=['accuracy'])
-        model.compile(optimizer=OPTIMIZER, loss='binary_crossentropy', metrics=['accuracy'])
+        if self.model_type == 'compare':
+            model.compile(optimizer=OPTIMIZER, loss='binary_crossentropy', metrics=['accuracy'])
+        else:
+            model.compile(optimizer=OPTIMIZER, loss='mean_squared_error', metrics=['accuracy'])
 
         return model
 
@@ -190,7 +211,9 @@ class PhanXu:
         preds = []
         for input_file in input_files:
             datas.append(conllu.CoNLLU(input_file).get_content())
-            preds.append(self.model.predict(self.parse_data(datas[-1])).flatten())
+            data = self.parse_data(datas[-1])
+            print(self.model.evaluate(data))
+            preds.append(self.model.predict(data).flatten())
 
         preds = np.array(preds).transpose()
         res = conllu.CoNLLU()
@@ -203,7 +226,9 @@ class PhanXu:
 
     def test2(self, input_files, output_file):
         datas = [conllu.CoNLLU(input_file).get_content() for input_file in input_files]
-        preds = self.model.predict(self.parse_data_2(datas)).flatten()
+        data = self.parse_data_2(datas)
+        print(self.model.evaluate(data))
+        preds = self.model.predict(data).flatten()
 
         res = conllu.CoNLLU()
         for _id, row in enumerate(preds):
@@ -213,7 +238,10 @@ class PhanXu:
         res.to_file(output_file)
 
     def test(self, input_files, output_file):
-        self.test2(input_files, output_file)
+        if self.model_type == 'compare':
+            self.test2(input_files, output_file)
+        else:
+            self.test1(input_files, output_file)
 
     def load_model(self):
         self.model = self.get_model()
@@ -230,23 +258,25 @@ class PhanXu:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("task")
-    parser.add_argument("-m", "--model-prefix", default='./saves/phanxu/grc-ud')
+    parser.add_argument("-m", "--model-prefix")
     parser.add_argument("-i", "--train-data", action='append')
-    parser.add_argument("-g", "--gold-data", default='./data/treebanks/grc-ud-train.conllu')
+    parser.add_argument("-g", "--gold-data")
     parser.add_argument("-t", "--test-data", action='append')
-    parser.add_argument("-o", "--output", default='./saves/phanxu/grc-ud-test.conllu')
+    parser.add_argument("-o", "--output")
     parser.add_argument("-e", "--embedding")
+    parser.add_argument("-c", "--model-type", default='compare')
+    parser.add_argument("-s", "--sentence-type", default='lstm')
     args = parser.parse_args()
 
     if args.task == 'all':
-        phanxu = PhanXu(args.model_prefix, args.train_data, args.gold_data, args.embedding)
+        phanxu = PhanXu(args.model_prefix, args.model_type, args.sentence_type, args.train_data, args.gold_data, args.embedding)
         phanxu.train()
         phanxu.test(args.test_data, args.output)
     elif args.task == 'train':
-        phanxu = PhanXu(args.model_prefix, args.train_data, args.gold_data, args.embedding)
+        phanxu = PhanXu(args.model_prefix, args.model_type, args.sentence_type, args.train_data, args.gold_data, args.embedding)
         phanxu.train()
     elif args.task == 'test':
-        phanxu = PhanXu(args.model_prefix)
+        phanxu = PhanXu(args.model_prefix, args.model_type, args.sentence_type)
         phanxu.load_model()
         phanxu.test(args.test_data, args.output)
     else:

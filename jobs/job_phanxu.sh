@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Select Q
-#$ -q albert.q
+#$ -q main.q
 #
 # Your job name
 #$ -N phanxu
@@ -21,8 +21,24 @@ export THEANO_FLAGS=mode=FAST_RUN,device=gpu,floatX=float32,lib.cnmem=0.4,dnn.en
 
 PYTHON=$(pwd)/venv/bin/python
 source $(pwd)/venv/bin/activate
-LANG=en-ud
 
-mkdir ./saves/phanxu/${LANG}
-${PYTHON} -u ./phanxu/phanxu.py all -m ./saves/phanxu/${LANG}/ -i ./saves/udpipe/${LANG}-train.conllu -i ./saves/bmst/${LANG}/train.conllu -g ./data/treebanks/${LANG}-train.conllu -t ./saves/udpipe/${LANG}-dev.conllu -t ./saves/bmst/${LANG}/dev.conllu -o ./saves/phanxu/${LANG}/dev.conllu -e ./data/fasttext/wiki.en.vec
-date
+for LANG in 'en-ud' 'grc-ud'
+do
+    echo "==UDPIPE=="
+    ${PYTHON} -u conll/evaluation_script/conll17_ud_eval.py --verbose ./saves/gold/${LANG}/test.conllu ./saves/udpipe/${LANG}/test.conllu
+    echo "==BSMT=="
+    ${PYTHON} -u conll/evaluation_script/conll17_ud_eval.py --verbose ./saves/gold/${LANG}/test.conllu ./saves/bmst/${LANG}/test.conllu
+    for sent_type in 'sum' 'lstm'
+    do
+        for model_type in 'compare' 'score'
+        do
+            date
+            mkdir ./saves/phanxu/${LANG}/${sent_type}-${model_type}
+            echo "==========${sent_type} ${model_type}========"
+            model_path=./saves/phanxu/${LANG}/${sent_type}-${model_type}/
+            ${PYTHON} -u ./phanxu/phanxu.py all -m ${model_path} -i ./saves/udpipe/${LANG}/train.conllu -i ./saves/bmst/${LANG}/train.conllu -g ./saves/gold/${LANG}/train.conllu -t ./saves/udpipe/${LANG}/test.conllu -t ./saves/bmst/${LANG}/test.conllu -o ${model_path}/test.conllu -e ./data/fasttext/${LANG}.vec -c ${model_type} -s ${sent_type} > ./jobs/log_phanxu_${sent_type}_${model_type}.out 2>&1
+            ${PYTHON} -u conll/evaluation_script/conll17_ud_eval.py --verbose ./saves/gold/${LANG}/test.conllu ${model_path}/test.conllu
+            date
+        done
+    done
+done
