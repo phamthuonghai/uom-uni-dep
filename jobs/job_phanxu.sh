@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Select Q
-#$ -q main.q
+#$ -q albert.q
 #
 # Your job name
 #$ -N phanxu
@@ -24,6 +24,7 @@ source $(pwd)/venv/bin/activate
 
 for LANG in 'en-ud' 'grc-ud'
 do
+    echo "========================================${LANG}========================================"
     echo "==UDPIPE=="
     ${PYTHON} -u conll/evaluation_script/conll17_ud_eval.py --verbose ./saves/gold/${LANG}/test.conllu ./saves/udpipe/${LANG}/test.conllu
     echo "==BSMT=="
@@ -35,8 +36,8 @@ do
             date
             mkdir ./saves/phanxu/${LANG}/${sent_type}-${model_type}
             echo "==========${sent_type} ${model_type}========"
-            model_path=./saves/phanxu/${LANG}/${sent_type}-${model_type}/
-            ${PYTHON} -u ./phanxu/phanxu.py all -m ${model_path} -i ./saves/udpipe/${LANG}/train.conllu -i ./saves/bmst/${LANG}/train.conllu -g ./saves/gold/${LANG}/train.conllu -t ./saves/udpipe/${LANG}/test.conllu -t ./saves/bmst/${LANG}/test.conllu -o ${model_path}/test.conllu -e ./data/fasttext/${LANG}.vec -c ${model_type} -s ${sent_type} > ./jobs/log_phanxu_${sent_type}_${model_type}.out 2>&1
+            model_path=./saves/phanxu/${LANG}/${sent_type}-${model_type}
+            ${PYTHON} -u ./phanxu/phanxu.py all -m ${model_path} -i ./saves/udpipe/${LANG}/train.conllu -i ./saves/bmst/${LANG}/train.conllu -g ./saves/gold/${LANG}/train.conllu -t ./saves/udpipe/${LANG}/test.conllu -t ./saves/bmst/${LANG}/test.conllu -d ./saves/gold/${LANG}/test.conllu -o ${model_path}/test.conllu -e ./data/fasttext/${LANG}.vec -c ${model_type} -s ${sent_type} > ./jobs/log_phanxu_${sent_type}_${model_type}.out 2>&1
             ${PYTHON} -u conll/evaluation_script/conll17_ud_eval.py --verbose ./saves/gold/${LANG}/test.conllu ${model_path}/test.conllu
             date
         done

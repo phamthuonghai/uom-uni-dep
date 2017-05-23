@@ -206,15 +206,20 @@ class PhanXu:
 
         self.model.load_weights(self.model_prefix + '.h5')
 
-    def test1(self, input_files, output_file):
+    def test_score(self, input_files, output_file, gold_test_file):
         datas = []
         preds = []
+        _score = []
+        gold_data = conllu.CoNLLU(gold_test_file).get_content()
         for input_file in input_files:
             datas.append(conllu.CoNLLU(input_file).get_content())
             data = self.parse_data(datas[-1])
-            print(self.model.evaluate(data))
+            labels = self.score(datas[-1], gold_data)
+            _score.append(np.array(self.model.evaluate(data, labels)))
+            print("%s: %s" % (input_file, str(_score[-1])))
             preds.append(self.model.predict(data).flatten())
 
+        print("Total: %s" % str(sum(_score)/len(_score)))
         preds = np.array(preds).transpose()
         res = conllu.CoNLLU()
         for _id, row in enumerate(preds):
@@ -224,10 +229,13 @@ class PhanXu:
 
         res.to_file(output_file)
 
-    def test2(self, input_files, output_file):
+    def test_compare(self, input_files, output_file, gold_test_file):
         datas = [conllu.CoNLLU(input_file).get_content() for input_file in input_files]
+        gold_data = conllu.CoNLLU(gold_test_file).get_content()
         data = self.parse_data_2(datas)
-        print(self.model.evaluate(data))
+        labels = (np.array(self.score(datas[0], gold_data))
+                  >= np.array(self.score(datas[1], gold_data))).astype(float)
+        print(self.model.evaluate(data, labels))
         preds = self.model.predict(data).flatten()
 
         res = conllu.CoNLLU()
@@ -237,11 +245,11 @@ class PhanXu:
 
         res.to_file(output_file)
 
-    def test(self, input_files, output_file):
+    def test(self, input_files, output_file, gold_test_file):
         if self.model_type == 'compare':
-            self.test2(input_files, output_file)
+            self.test_compare(input_files, output_file, gold_test_file)
         else:
-            self.test1(input_files, output_file)
+            self.test_score(input_files, output_file, gold_test_file)
 
     def load_model(self):
         self.model = self.get_model()
@@ -262,6 +270,7 @@ if __name__ == '__main__':
     parser.add_argument("-i", "--train-data", action='append')
     parser.add_argument("-g", "--gold-data")
     parser.add_argument("-t", "--test-data", action='append')
+    parser.add_argument("-d", "--gold-test-data")
     parser.add_argument("-o", "--output")
     parser.add_argument("-e", "--embedding")
     parser.add_argument("-c", "--model-type", default='compare')
@@ -271,13 +280,13 @@ if __name__ == '__main__':
     if args.task == 'all':
         phanxu = PhanXu(args.model_prefix, args.model_type, args.sentence_type, args.train_data, args.gold_data, args.embedding)
         phanxu.train()
-        phanxu.test(args.test_data, args.output)
+        phanxu.test(args.test_data, args.output, args.gold_test_data)
     elif args.task == 'train':
         phanxu = PhanXu(args.model_prefix, args.model_type, args.sentence_type, args.train_data, args.gold_data, args.embedding)
         phanxu.train()
     elif args.task == 'test':
         phanxu = PhanXu(args.model_prefix, args.model_type, args.sentence_type)
         phanxu.load_model()
-        phanxu.test(args.test_data, args.output)
+        phanxu.test(args.test_data, args.output, args.gold_test_data)
     else:
         print('Wtf r u saying? all, train or test. That\'s all')
